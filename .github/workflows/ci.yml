@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y shellcheck gettext-base wireguard-tools perl make
+
+      - name: Bash syntax check
+        run: |
+          set -e
+          mapfile -t files < <(git ls-files '*.sh')
+          for f in "${files[@]}"; do
+            echo "Checking syntax: $f"
+            bash -n "$f"
+          done
+
+      - name: ShellCheck
+        run: |
+          set -e
+          shellcheck -S warning $(git ls-files '*.sh')
+
+      - name: Render templates (dry run)
+        working-directory: home-secnet
+        run: |
+          set -euo pipefail
+          cp -f .env.example .env
+          # Ensure CI-safe defaults
+          sed -i -E 's/^WRAP_MODE=.*/WRAP_MODE=none/' .env
+          sed -i -E 's/^DOUBLE_HOP_ENABLE=.*/DOUBLE_HOP_ENABLE=false/' .env
+          sed -i -E 's/^SPA_ENABLE=.*/SPA_ENABLE=false/' .env
+          # Render router configs
+          bash scripts/render_router_configs.sh
+          # Sanity check expected artifacts
+          test -s render/router/configs/wg0.conf
+          test -s render/router/configs/nftables.conf
+          test -s render/router/configs/dhcpd.conf
+          test -s render/router/configs/suricata.yaml
+          test -s render/router/configs/tc-shaping.sh
+          test -s render/router/configs/netplan.yaml
+
+      - name: Make clean
+        working-directory: home-secnet
+        run: make clean
+
