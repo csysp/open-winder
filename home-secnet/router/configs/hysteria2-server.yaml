@@ -1,0 +1,18 @@
+# Hysteria2 server to forward WG UDP over QUIC (UDP ${WRAP_LISTEN_PORT})
+listen: :${WRAP_LISTEN_PORT}
+obfs:
+  type: salamander
+  salamander:
+    password: ${WRAP_PASSWORD}
+auth:
+  type: password
+  password: ${WRAP_PASSWORD}
+udp:
+  idle_timeout: 90s
+  # Forward all UDP to local WireGuard
+  upstream: 127.0.0.1:${WG_PORT}
+tls:
+  sni: ${WRAP_DOMAIN}
+  cert: /etc/hysteria/server.crt
+  key: /etc/hysteria/server.key
+  insecure: false

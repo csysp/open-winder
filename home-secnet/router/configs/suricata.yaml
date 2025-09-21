@@ -1,0 +1,58 @@
+%YAML 1.1
+---
+af-packet:
+  - interface: "${ROUTER_LAN_IF}.${VLAN_TRUSTED}"
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    copy-mode: ips
+    copy-iface: ${ROUTER_WAN_IF}
+  - interface: "${ROUTER_LAN_IF}.${VLAN_IOT}"
+    cluster-id: 98
+    cluster-type: cluster_flow
+    defrag: yes
+    copy-mode: ips
+    copy-iface: ${ROUTER_WAN_IF}
+  - interface: "${ROUTER_LAN_IF}.${VLAN_GUEST}"
+    cluster-id: 97
+    cluster-type: cluster_flow
+    defrag: yes
+    copy-mode: ips
+    copy-iface: ${ROUTER_WAN_IF}
+  - interface: "${ROUTER_LAN_IF}.${VLAN_LAB}"
+    cluster-id: 96
+    cluster-type: cluster_flow
+    defrag: yes
+    copy-mode: ips
+    copy-iface: ${ROUTER_WAN_IF}
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: /var/log/suricata/eve.json
+      community-id: true
+      types: [ alert, dns, http, tls, ssh, smtp, dhcp ]
+  - syslog:
+      enabled: yes
+      facility: local0
+      level: info
+
+logging:
+  default-log-level: info
+  outputs:
+    - console:
+        enabled: yes
+        level: info
+
+vars:
+  address-groups:
+    HOME_NET: "[${NET_TRUSTED}, ${NET_IOT}, ${NET_GUEST}, ${NET_LAB}]"
+    EXTERNAL_NET: "!\$HOME_NET"
+
+rule-files:
+  - suricata.rules
+
+%YAML 1.1
+...
+

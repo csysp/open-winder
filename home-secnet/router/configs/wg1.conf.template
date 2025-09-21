@@ -1,0 +1,14 @@
+[Interface]
+Address = ${WG2_ADDRESS}
+PrivateKey = ${WG2_PRIVATE_KEY}
+
+# Policy routing for WG clients via wg1 (double-hop)
+PostUp = ip rule add from ${WG_NET} table 100; ip route add default dev wg1 table 100
+PostDown = ip rule del from ${WG_NET} table 100 || true; ip route del default dev wg1 table 100 || true
+
+[Peer]
+PublicKey = ${WG2_PEER_PUBLIC_KEY}
+AllowedIPs = ${WG2_ALLOWED_IPS}
+Endpoint = ${WG2_ENDPOINT}
+PersistentKeepalive = 25
+

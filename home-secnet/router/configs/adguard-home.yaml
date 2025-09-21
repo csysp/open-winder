@@ -1,0 +1,22 @@
+bind_host: 0.0.0.0
+bind_port: 3000
+dns:
+  bind_hosts:
+    - ${GW_TRUSTED}
+    - ${GW_IOT}
+    - ${GW_GUEST}
+    - ${GW_LAB}
+    - ${WG_DNS}
+  port: 53
+  upstream_dns:
+    # Encrypted upstreams (DoH)
+    - https://dns.quad9.net/dns-query
+    - https://cloudflare-dns.com/dns-query
+  bootstrap_dns:
+    # Plain DNS used only to resolve DoH hostnames at startup
+    - 9.9.9.9
+    - 1.1.1.1
+  protection_enabled: true
+  filtering_enabled: true
+  blocking_mode: default
+  dnssec_enabled: true

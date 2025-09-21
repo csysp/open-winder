@@ -1,0 +1,30 @@
+[OPTIONS]
+enable: 1
+policy_in: DROP
+policy_out: ACCEPT
+policy_forward: DROP
+
+[ALIASES]
+WG_NET 10.66.66.0/24
+TRUSTED_NET ${NET_TRUSTED}
+
+[RULES]
+# Allow loopback
+IN ACCEPT -i lo
+
+# Allow established
+IN ACCEPT -p all -m conntrack --ctstate RELATED,ESTABLISHED
+
+# Allow SSH from TRUSTED only
+IN ACCEPT -p tcp -s TRUSTED_NET --dport 22
+
+# Allow Proxmox UI 8006 from WireGuard only and localhost
+IN ACCEPT -p tcp -s WG_NET --dport 8006
+IN ACCEPT -p tcp -s 127.0.0.1/32 --dport 8006
+
+# Drop UI from everywhere else
+IN DROP -p tcp --dport 8006
+
+# Drop from WAN bridges just in case
+IN DROP -i ${VM_BR_WAN}
+

@@ -1,0 +1,15 @@
+# Ignore environment and rendered artifacts for home-secnet
+home-secnet/.env
+home-secnet/render/
+home-secnet/clients/
+home-secnet/router/configs/env-vars.sh
+home-secnet/render/wg/
+
+# Logs and backups
+**/*.log
+**/*.bak-*
+
+# OS files
+.DS_Store
+Thumbs.db
+

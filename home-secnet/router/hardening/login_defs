@@ -1,0 +1,6 @@
+# Password and account policy
+PASS_MAX_DAYS   365
+PASS_MIN_DAYS   1
+PASS_MIN_LEN    12
+PASS_WARN_AGE   14
+UMASK           027

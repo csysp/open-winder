@@ -1,0 +1,12 @@
+[Unit]
+Description=Home-SecNet Daily Rootkit Scan
+
+[Service]
+Type=oneshot
+ExecStart=/opt/router/security/daily-rootkit.sh
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target
+

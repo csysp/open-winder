@@ -1,0 +1,29 @@
+#cloud-config
+ssh_pwauth: false
+disable_root: true
+users:
+  - name: ${ROUTER_ADMIN_USER}
+    ssh_authorized_keys:
+      - ${ROUTER_ADMIN_PUBKEY}
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    shell: /bin/bash
+package_update: true
+packages:
+  - nftables
+  - wireguard
+  - resolvconf
+  - net-tools
+  - isc-dhcp-server
+  - unbound
+  - suricata
+  - ifupdown2
+  - iproute2
+runcmd:
+  - [ sysctl, -w, net.ipv4.ip_forward=1 ]
+  - [ systemctl, enable, --now, nftables ]
+  - [ systemctl, enable, --now, isc-dhcp-server ]
+  - [ systemctl, enable, --now, suricata ]
+  - [ bash, -lc, "if [ -f /etc/wireguard/wg0.conf ]; then systemctl enable --now wg-quick@wg0; fi" ]
+  - [ bash, -lc, "if [ -f /etc/unbound/unbound.conf ]; then systemctl enable --now unbound; fi" ]
+  - [ bash, -lc, "mkdir -p /opt/router && echo '# bootstrap placeholder' > /opt/router/bootstrap.sh && chmod +x /opt/router/bootstrap.sh" ]
+final_message: "Router cloud-init complete."
