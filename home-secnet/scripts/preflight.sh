@@ -4,7 +4,7 @@ set -euo pipefail
 echo "[00] Validating host environment (Linux + Proxmox + tools)..."
 
 if [[ "$(uname -s)" != "Linux" ]]; then
-  echo "[preflight] This project targets Linux (Debian/Ubuntu)." >&2
+  echo "[00] This project targets Linux (Debian/Ubuntu)." >&2
   exit 1
 fi
 
@@ -18,7 +18,6 @@ need_root() {
 has() { command -v "$1" >/dev/null 2>&1; }
 
 # Detect package manager
-PKG=""
 if ! has apt-get; then
   echo "[00] Unsupported distro (requires apt)." >&2
   exit 1
