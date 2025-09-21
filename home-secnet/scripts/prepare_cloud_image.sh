@@ -10,7 +10,6 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-IMG_ALIAS="ubuntu-24.04"
 echo "[05] Using storages: ISO=$ISO_STORAGE, DISK=$DISK_STORAGE"
 
 TEMPLATE_VM_ID=9000

@@ -21,7 +21,7 @@ if [[ -z "${PHYS_LAN_IF:-}" ]]; then
 fi
 
 INTERFACES=/etc/network/interfaces
-cp -a "$INTERFACES"{,.bak-$(date +%s)}
+cp -a "$INTERFACES" "${INTERFACES}.bak-$(date +%s)"
 
 add_or_replace_block() {
   local marker="$1"; shift

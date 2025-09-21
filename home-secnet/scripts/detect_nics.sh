@@ -12,7 +12,17 @@ ensure_env_file
 load_env
 
 # Detect physical NICs (skip virtual bridges and veth)
-mapfile -t PHYS < <(ls -1 /sys/class/net | grep -vE 'lo|vmbr|tap|veth|fwln|fwpr|fwbr' | xargs -I{} bash -lc '[[ -d "/sys/class/net/{}/device" ]] && echo {}' || true)
+PHYS=()
+for ifpath in /sys/class/net/*; do
+  name="$(basename "$ifpath")"
+  # Skip known virtual/interface patterns
+  if [[ "$name" =~ ^(lo|vmbr|tap|veth|fwln|fwpr|fwbr) ]]; then
+    continue
+  fi
+  if [[ -d "$ifpath/device" ]]; then
+    PHYS+=("$name")
+  fi
+done
 
 COUNT=${#PHYS[@]}
 echo "[02] Found physical interfaces: ${PHYS[*]:-none} (count=$COUNT)"

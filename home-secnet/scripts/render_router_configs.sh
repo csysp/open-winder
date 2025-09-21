@@ -27,7 +27,7 @@ prefix_len() { echo "$1" | awk -F'/' '{print $2}'; }
 net_addr() { echo "$1" | awk -F'/' '{print $1}'; }
 mask_from_prefix() {
   local p="$1"; local m=(); local i
-  for i in 1 2 3 4; do
+  for ((i=0; i<4; i++)); do
     local bits=$(( p>=8 ? 8 : (p>0 ? p : 0) ))
     m+=( $(( 256 - 2**(8-bits) )) )
     p=$(( p-bits ))
@@ -283,7 +283,6 @@ EOF
 
 # Sample client
 CLIENT_PRIV=$(wg genkey)
-CLIENT_PUB=$(printf "%s" "$CLIENT_PRIV" | wg pubkey)
 cat > "$ROOT_DIR/clients/wg-client1.conf" <<EOF
 [Interface]
 PrivateKey = ${CLIENT_PRIV}

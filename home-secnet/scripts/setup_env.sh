@@ -3,8 +3,6 @@ set -euo pipefail
 
 echo "[01] Preparing .env with interactive prompts..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ENV_FILE="$ROOT_DIR/.env"
-
 # shellcheck source=./lib/env.sh
 source "$ROOT_DIR/scripts/lib/env.sh"
 

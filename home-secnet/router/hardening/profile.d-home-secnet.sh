@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # Session security
 export TMOUT=900
 readonly TMOUT

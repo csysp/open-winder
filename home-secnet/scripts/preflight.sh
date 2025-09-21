@@ -19,7 +19,7 @@ has() { command -v "$1" >/dev/null 2>&1; }
 
 # Detect package manager
 PKG=""
-if has apt-get; then PKG=apt; else
+if ! has apt-get; then
   echo "[00] Unsupported distro (requires apt)." >&2
   exit 1
 fi
