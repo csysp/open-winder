@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[00a] Preparing .env with interactive prompts..."
+echo "[01] Preparing .env with interactive prompts..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$ROOT_DIR/.env"
 
@@ -19,7 +19,7 @@ if [[ "$ISP_WAN_TYPE" == "static" ]]; then
   ensure_env WAN_STATIC_DNS "Upstream DNS (space-separated)" "1.1.1.1 9.9.9.9"
 fi
 
-ensure_choice DNS_STACK "DNS stack" "unbound" "unbound,adguard"
+ensure_choice DNS_STACK "DNS stack" "adguard" "unbound,adguard"
 ensure_choice USE_VLANS "Use VLAN segmentation?" "false" "true,false"
 
 # WireGuard wrapper / obfuscation
@@ -105,4 +105,4 @@ log_key_default=""
 if [[ -f "$HOME/.ssh/id_ed25519.pub" ]]; then log_key_default=$(cat "$HOME/.ssh/id_ed25519.pub"); fi
 ensure_env LOG_ADMIN_PUBKEY "Paste Logging admin SSH public key" "${log_key_default:-ssh-ed25519 AAAA... yourkey}"
 
-echo "[00a] .env updated with provided values."
+echo "[01] .env updated with provided values."

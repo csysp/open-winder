@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[01] Hardening Proxmox host..."
+echo "[03] Hardening Proxmox host..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/.env"
 
 if [[ $EUID -ne 0 ]]; then
-  echo "[01] Run as root on the Proxmox host." >&2
+  echo "[03] Run as root on the Proxmox host." >&2
   exit 1
 fi
 
-echo "[01] Enforcing SSH key-only, disabling root password login and hardening sshd..."
+echo "[03] Enforcing SSH key-only, disabling root password login and hardening sshd..."
 sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
 sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin no/' /etc/ssh/sshd_config
 # Conservative ssh hardening
@@ -29,7 +29,7 @@ if ! grep -q '^AllowUsers ' /etc/ssh/sshd_config; then
 fi
 systemctl reload ssh || systemctl reload sshd || true
 
-echo "[01] Installing lynis and security tooling..."
+echo "[03] Installing lynis and security tooling..."
 apt-get update -y
 apt-get install -y lynis libpam-tmpdir libpam-pwquality fail2ban
 systemctl enable --now fail2ban || true
@@ -48,7 +48,7 @@ systemctl restart fail2ban || true
 
 lynis audit system || true
 
-echo "[01] Enabling Proxmox node firewall with inbound DROP..."
+echo "[03] Enabling Proxmox node firewall with inbound DROP..."
 pve-firewall status || true
 if command -v pvesh >/dev/null 2>&1; then
   # Enable cluster and node firewall, set default policies
@@ -59,11 +59,11 @@ fi
 pve-firewall compile || true
 pve-firewall restart || true
 
-echo "[01] Disabling unused services (nfs, samba/cifs if present)..."
+echo "[03] Disabling unused services (nfs, samba/cifs if present)..."
 systemctl disable --now nfs-server 2>/dev/null || true
 systemctl disable --now smbd nmbd 2>/dev/null || true
 
-echo "[01] Applying kernel/network hardening sysctls..."
+echo "[03] Applying kernel/network hardening sysctls..."
 cat > /etc/sysctl.d/99-home-secnet.conf <<'EOF'
 fs.suid_dumpable = 0
 fs.protected_fifos = 2
@@ -86,7 +86,7 @@ net.ipv6.conf.default.accept_redirects = 0
 EOF
 sysctl --system || true
 
-echo "[01] Blacklisting uncommon network protocols..."
+echo "[03] Blacklisting uncommon network protocols..."
 cat > /etc/modprobe.d/blacklist-home-secnet.conf <<'EOF'
 install dccp /bin/false
 install sctp /bin/false
@@ -94,10 +94,10 @@ install rds /bin/false
 install tipc /bin/false
 EOF
 
-echo "[01] Setting login banner and secure umask..."
+echo "[03] Setting login banner and secure umask..."
 echo "Authorized access only. Disconnect immediately if you are not authorized." > /etc/issue
 cp /etc/issue /etc/issue.net
 if ! grep -q '^UMASK' /etc/login.defs; then echo 'UMASK 027' >> /etc/login.defs; fi
 echo 'export TMOUT=900; readonly TMOUT; umask 027' > /etc/profile.d/99-home-secnet.sh
 
-echo "[01] Done basic hardening. Detailed rules applied in step 08."
+echo "[03] Done basic hardening. Detailed rules applied in step 10."

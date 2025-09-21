@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[02] Configuring Proxmox bridges (WAN vmbr0, LAN trunk vmbr1)..."
+echo "[04] Configuring Proxmox bridges (WAN vmbr0, LAN trunk vmbr1)..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/.env"
 
 if [[ $EUID -ne 0 ]]; then
-  echo "[02] Run as root on the Proxmox host." >&2
+  echo "[04] Run as root on the Proxmox host." >&2
   exit 1
 fi
 
 if [[ -z "${PHYS_WAN_IF:-}" ]]; then
-  echo "[02] PHYS_WAN_IF is not set. Run 00_detect_nics.sh first." >&2
+  echo "[04] PHYS_WAN_IF is not set. Run detect_nics.sh first." >&2
   exit 1
 fi
 
 if [[ -z "${PHYS_LAN_IF:-}" ]]; then
-  echo "[02] Only one NIC detected. Fallback: vmbr0 to WAN on ${PHYS_WAN_IF}."
-  echo "[02] LAN trunk cannot be provided without a second NIC. Add USB NIC and re-run."
+  echo "[04] Only one NIC detected. Fallback: vmbr0 to WAN on ${PHYS_WAN_IF}."
+  echo "[04] LAN trunk cannot be provided without a second NIC. Add USB NIC and re-run."
 fi
 
 INTERFACES=/etc/network/interfaces
@@ -45,8 +45,8 @@ if [[ -n "${PHYS_LAN_IF:-}" ]]; then
   add_or_replace_block HOME-SECNET-VMRB1 "$LAN_BLOCK"
 fi
 
-echo "[02] Bridge config written. Restarting networking..."
+echo "[04] Bridge config written. Restarting networking..."
 if systemctl is-active --quiet networking; then
   systemctl restart networking || true
 fi
-echo "[02] Done."
+echo "[04] Done."

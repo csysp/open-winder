@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[07] Pushing configs into Router VM and applying..."
+echo "[09] Pushing configs into Router VM and applying..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/.env"
 
@@ -13,15 +13,15 @@ if [[ -z "${ROUTER_IP}" ]]; then
   fi
 fi
 if [[ -z "${ROUTER_IP}" ]]; then
-  read -r -p "[07] Router VM IP not detected. Enter Router IP: " ROUTER_IP
-  if [[ -z "$ROUTER_IP" ]]; then echo "[07] Router IP is required." >&2; exit 1; fi
+  read -r -p "[09] Router VM IP not detected. Enter Router IP: " ROUTER_IP
+  if [[ -z "$ROUTER_IP" ]]; then echo "[09] Router IP is required." >&2; exit 1; fi
 fi
 
-echo "[07] Using Router VM IP: $ROUTER_IP"
+echo "[09] Using Router VM IP: $ROUTER_IP"
 
 RUSER=${ROUTER_ADMIN_USER}
 
-ssh -o StrictHostKeyChecking=no ${RUSER}@${ROUTER_IP} 'sudo mkdir -p /opt/router && sudo chown $USER:$USER /opt/router'
+ssh -o StrictHostKeyChecking=no ${RUSER}@${ROUTER_IP} "sudo mkdir -p /opt/router && sudo chown \$(id -un):\$(id -gn) /opt/router"
 rsync -av --delete "$ROOT_DIR/render/router/configs/" ${RUSER}@${ROUTER_IP}:/opt/router/
 rsync -av "$ROOT_DIR/router/systemd/" ${RUSER}@${ROUTER_IP}:/opt/router/systemd/
 rsync -av "$ROOT_DIR/router/hardening/" ${RUSER}@${ROUTER_IP}:/opt/router/hardening/
@@ -99,7 +99,7 @@ echo "ALERT_EMAIL=${ALERT_EMAIL}" | sudo tee /etc/home-secnet/alert.conf >/dev/n
 # Optional msmtp config for SMTP relay
 if [[ "${SMTP_ENABLE}" == "true" && -n "${SMTP_HOST}" ]]; then
   sudo apt-get update -y && sudo apt-get install -y msmtp bsd-mailx || true
-  sudo bash -lc 'cat > /etc/msmtprc <<CONF
+  sudo bash -lc "cat > /etc/msmtprc <<CONF
 defaults
 auth           on
 tls            ${SMTP_TLS}
@@ -113,7 +113,7 @@ user ${SMTP_USER}
 password ${SMTP_PASSWORD}
 from ${SMTP_USER}
 syslog on
-CONF'
+CONF"
   sudo chmod 600 /etc/msmtprc
 fi
 sudo apt-get install -y bsd-mailx || true
@@ -219,4 +219,4 @@ sudo bash -lc 'cfg=/etc/login.defs; \
   sed -i -E "s/^#?PASS_WARN_AGE\s+.*/PASS_WARN_AGE\t14/" "$cfg" || echo "PASS_WARN_AGE\t14" >> "$cfg";'
 EOSSH
 
-echo "[07] Push and apply complete."
+echo "[09] Push and apply complete."

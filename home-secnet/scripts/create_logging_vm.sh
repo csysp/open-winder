@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[05] Building Logging VM..."
+echo "[07] Building Logging VM..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/.env"
 
 if [[ $EUID -ne 0 ]]; then
-  echo "[05] Run as root on the Proxmox host." >&2
+  echo "[07] Run as root on the Proxmox host." >&2
   exit 1
 fi
 
 TEMPLATE_VM_ID=9000
 
 if qm status "$LOG_VM_ID" >/dev/null 2>&1; then
-  echo "[05] Logging VM $LOG_VM_ID already exists. Skipping creation."
+  echo "[07] Logging VM $LOG_VM_ID already exists. Skipping creation."
 else
-  echo "[05] Cloning from template $TEMPLATE_VM_ID to $LOG_VM_ID ($LOG_VM_NAME)..."
+  echo "[07] Cloning from template $TEMPLATE_VM_ID to $LOG_VM_ID ($LOG_VM_NAME)..."
   qm clone $TEMPLATE_VM_ID $LOG_VM_ID --name "$LOG_VM_NAME" --full 1 --storage "$DISK_STORAGE"
   qm set $LOG_VM_ID --memory "$LOG_RAM" --cores "$LOG_CPU"
   qm set $LOG_VM_ID --scsihw virtio-scsi-pci
@@ -36,4 +36,4 @@ else
   qm set $LOG_VM_ID --onboot 1
 fi
 
-echo "[05] Logging VM ready. Start it if needed: qm start $LOG_VM_ID"
+echo "[07] Logging VM ready. Start it if needed: qm start $LOG_VM_ID"

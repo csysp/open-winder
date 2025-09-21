@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[08] Locking down Proxmox firewall..."
+echo "[10] Locking down Proxmox firewall..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+set -a
 source "$ROOT_DIR/.env"
+set +a
 
 if [[ $EUID -ne 0 ]]; then
-  echo "[08] Run as root on the Proxmox host." >&2
+  echo "[10] Run as root on the Proxmox host." >&2
   exit 1
 fi
 
@@ -26,8 +28,8 @@ if command -v envsubst >/dev/null 2>&1; then
   envsubst < "$NODE_RULES_SRC" > "$tmp_rules"
   envsubst < "$NODE_GROUPS_SRC" > "$tmp_groups"
 else
-  perl -M5.010 -pe 's/\$\{([A-Z0-9_]+)\}/$ENV{$1} //ge' "$NODE_RULES_SRC" > "$tmp_rules"
-  perl -M5.010 -pe 's/\$\{([A-Z0-9_]+)\}/$ENV{$1} //ge' "$NODE_GROUPS_SRC" > "$tmp_groups"
+  perl -M5.010 -pe 's/\$\{([A-Z0-9_]+)\}/defined $ENV{$1} ? $ENV{$1} : ""/ge' "$NODE_RULES_SRC" > "$tmp_rules"
+  perl -M5.010 -pe 's/\$\{([A-Z0-9_]+)\}/defined $ENV{$1} ? $ENV{$1} : ""/ge' "$NODE_GROUPS_SRC" > "$tmp_groups"
 fi
 
 # Write node and group configs to correct Proxmox paths
@@ -44,4 +46,4 @@ fi
 # Apply and activate firewall rules
 pve-firewall compile || true
 pve-firewall restart || true
-echo "[08] Applied node firewall (host.fw) and groups. Default inbound DROP enforced."
+echo "[10] Applied node firewall (host.fw) and groups. Default inbound DROP enforced."

@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[04] Building Router VM..."
+echo "[06] Building Router VM..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/.env"
 
 if [[ $EUID -ne 0 ]]; then
-  echo "[04] Run as root on the Proxmox host." >&2
+  echo "[06] Run as root on the Proxmox host." >&2
   exit 1
 fi
 
 TEMPLATE_VM_ID=9000
 
 if qm status "$ROUTER_VM_ID" >/dev/null 2>&1; then
-  echo "[04] Router VM $ROUTER_VM_ID already exists. Skipping creation."
+  echo "[06] Router VM $ROUTER_VM_ID already exists. Skipping creation."
 else
-  echo "[04] Cloning from template $TEMPLATE_VM_ID to $ROUTER_VM_ID ($ROUTER_VM_NAME)..."
+  echo "[06] Cloning from template $TEMPLATE_VM_ID to $ROUTER_VM_ID ($ROUTER_VM_NAME)..."
   qm clone $TEMPLATE_VM_ID $ROUTER_VM_ID --name "$ROUTER_VM_NAME" --full 1 --storage "$DISK_STORAGE"
   qm set $ROUTER_VM_ID --memory "$ROUTER_RAM" --cores "$ROUTER_CPU"
   qm set $ROUTER_VM_ID --scsihw virtio-scsi-pci
@@ -34,4 +34,4 @@ else
   qm set $ROUTER_VM_ID --onboot 1
 fi
 
-echo "[04] Router VM ready. Start it if needed: qm start $ROUTER_VM_ID"
+echo "[06] Router VM ready. Start it if needed: qm start $ROUTER_VM_ID"
