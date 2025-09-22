@@ -16,8 +16,8 @@ if [[ -z "${PHYS_WAN_IF:-}" ]]; then
 fi
 
 if [[ -z "${PHYS_LAN_IF:-}" ]]; then
-  echo "[04] Only one NIC detected. Fallback: vmbr0 to WAN on ${PHYS_WAN_IF}."
-  echo "[04] LAN trunk cannot be provided without a second NIC. Add USB NIC and re-run."
+  echo "[04] ERROR: Only one NIC detected; system requires 2 NICs." >&2
+  exit 1
 fi
 
 INTERFACES=/etc/network/interfaces

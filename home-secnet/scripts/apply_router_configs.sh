@@ -27,7 +27,7 @@ rsync -av "$ROOT_DIR/router/systemd/" ${RUSER}@${ROUTER_IP}:/opt/router/systemd/
 rsync -av "$ROOT_DIR/router/hardening/" ${RUSER}@${ROUTER_IP}:/opt/router/hardening/
 rsync -av "$ROOT_DIR/router/cloudinit/" ${RUSER}@${ROUTER_IP}:/opt/router/cloudinit/
 
-ssh ${RUSER}@${ROUTER_IP} "LOG_VM_IP='${LOG_VM_IP}' USE_VLANS='${USE_VLANS}' ROUTER_LAN_IF='${ROUTER_LAN_IF}' VLAN_TRUSTED='${VLAN_TRUSTED}' VLAN_IOT='${VLAN_IOT}' VLAN_GUEST='${VLAN_GUEST}' VLAN_LAB='${VLAN_LAB}' ALERT_EMAIL='${ALERT_EMAIL}' SMTP_ENABLE='${SMTP_ENABLE}' SMTP_HOST='${SMTP_HOST}' SMTP_PORT='${SMTP_PORT}' SMTP_USER='${SMTP_USER}' SMTP_PASSWORD='${SMTP_PASSWORD}' SMTP_TLS='${SMTP_TLS}' DISABLE_USB_STORAGE='${DISABLE_USB_STORAGE}' HARDEN_AUDITD='${HARDEN_AUDITD}' INSTALL_AIDE='${INSTALL_AIDE}' FAIL2BAN_ENABLE='${FAIL2BAN_ENABLE}' ADGUARD_VERSION='${ADGUARD_VERSION}' HYSTERIA_VERSION='latest' bash -s" <<'EOSSH'
+ssh ${RUSER}@${ROUTER_IP} "USE_VLANS='${USE_VLANS}' ROUTER_LAN_IF='${ROUTER_LAN_IF}' VLAN_TRUSTED='${VLAN_TRUSTED}' VLAN_IOT='${VLAN_IOT}' VLAN_GUEST='${VLAN_GUEST}' VLAN_LAB='${VLAN_LAB}' DISABLE_USB_STORAGE='${DISABLE_USB_STORAGE}' HARDEN_AUDITD='${HARDEN_AUDITD}' INSTALL_AIDE='${INSTALL_AIDE}' FAIL2BAN_ENABLE='${FAIL2BAN_ENABLE}' ADGUARD_VERSION='${ADGUARD_VERSION}' HYSTERIA_VERSION='latest' bash -s" <<'EOSSH'
 set -euo pipefail
 sudo mkdir -p /etc/netplan /etc/wireguard
 # Backups with timestamp
@@ -75,11 +75,7 @@ if [[ -f /opt/router/hysteria2.yaml ]]; then
 fi
 sudo cp /opt/router/suricata.yaml /etc/suricata/suricata.yaml
 sudo install -m 0755 /opt/router/tc-shaping.sh /opt/router/tc-shaping.sh
-if [[ -f /opt/router/rsyslog-remote.conf ]]; then
-  echo "[router] Installing rsyslog forwarding to central log VM"
-  echo "*.* @@${LOG_VM_IP}:514" | sudo tee /etc/rsyslog.d/90-remote.conf >/dev/null
-  sudo systemctl restart rsyslog || true
-fi
+rm -f /etc/rsyslog.d/90-remote.conf 2>/dev/null || true
 
 # Install daily security maintenance timers
 sudo install -d -m 0755 /opt/router/security
@@ -93,30 +89,7 @@ sudo chmod +x /opt/adguard/install-adguard.sh
 sudo cp -a /opt/router/systemd/hysteria/hysteria.service /etc/systemd/system/
 sudo cp -a /opt/router/systemd/hysteria/install-hysteria.sh /opt/hysteria/install-hysteria.sh
 sudo chmod +x /opt/hysteria/install-hysteria.sh
-# Configure alert email
-sudo mkdir -p /etc/home-secnet
-echo "ALERT_EMAIL=${ALERT_EMAIL}" | sudo tee /etc/home-secnet/alert.conf >/dev/null
-# Optional msmtp config for SMTP relay
-if [[ "${SMTP_ENABLE}" == "true" && -n "${SMTP_HOST}" ]]; then
-  sudo apt-get update -y && sudo apt-get install -y msmtp bsd-mailx || true
-  sudo bash -lc "cat > /etc/msmtprc <<CONF
-defaults
-auth           on
-tls            ${SMTP_TLS}
-tls_trust_file /etc/ssl/certs/ca-certificates.crt
-logfile        /var/log/msmtp.log
-
-account default
-host ${SMTP_HOST}
-port ${SMTP_PORT}
-user ${SMTP_USER}
-password ${SMTP_PASSWORD}
-from ${SMTP_USER}
-syslog on
-CONF"
-  sudo chmod 600 /etc/msmtprc
-fi
-sudo apt-get install -y bsd-mailx || true
+echo "[router] Email alerts disabled; skipping mail setup."
 sudo systemctl daemon-reload
 sudo systemctl enable --now home-secnet-daily-update.timer
 sudo systemctl enable --now home-secnet-daily-lynis.timer

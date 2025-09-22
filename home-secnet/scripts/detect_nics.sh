@@ -44,13 +44,21 @@ if (( COUNT == 1 )); then
   PHYS_WAN_IF="${PHYS[0]}"
   PHYS_LAN_IF="" # none available
 else
-  # Prefer to choose internal as LAN and USB as WAN (heuristic)
+  # Prefer USB NIC for WAN and a different NIC for LAN
   WAN_CANDIDATE="${PHYS[0]}"
-  LAN_CANDIDATE="${PHYS[1]}"
-  # crude USB detection
+  # crude USB detection for WAN preference
   for IF in "${PHYS[@]}"; do
     if readlink -f "/sys/class/net/$IF" | grep -q usb; then
       WAN_CANDIDATE="$IF"
+      break
+    fi
+  done
+  # pick first NIC that is NOT the WAN candidate as LAN candidate
+  LAN_CANDIDATE=""
+  for IF in "${PHYS[@]}"; do
+    if [[ "$IF" != "$WAN_CANDIDATE" ]]; then
+      LAN_CANDIDATE="$IF"
+      break
     fi
   done
   PHYS_WAN_IF="$WAN_CANDIDATE"

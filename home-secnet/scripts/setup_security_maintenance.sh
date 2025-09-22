@@ -23,7 +23,7 @@ EOF
 
 setup_host_security_units() {
   echo "[11] Installing host scanners (lynis, rkhunter, chkrootkit, clamav)..."
-  apt-get install -y lynis rkhunter chkrootkit clamav-daemon clamav-freshclam msmtp bsd-mailx
+  apt-get install -y lynis rkhunter chkrootkit clamav-daemon clamav-freshclam
   systemctl enable --now clamav-freshclam || true
 
   mkdir -p /usr/local/sbin
@@ -168,36 +168,11 @@ EOS
 }
 
 setup_rsyslog_forward() {
-  if [[ -n "${LOG_VM_IP:-}" ]]; then
-    echo "[11] Configuring host rsyslog forwarding to ${LOG_VM_IP}:514"
-    echo "*.* @@${LOG_VM_IP}:514" > /etc/rsyslog.d/90-remote.conf
-    systemctl restart rsyslog || true
-  fi
+  echo "[11] Skipping host rsyslog remote forwarding (logging VM removed)"
+  rm -f /etc/rsyslog.d/90-remote.conf 2>/dev/null || true
 }
 
-echo "[11] Writing alert email config for host"
-mkdir -p /etc/home-secnet
-echo "ALERT_EMAIL=${ALERT_EMAIL}" > /etc/home-secnet/alert.conf
-
-if [[ "${SMTP_ENABLE}" == "true" && -n "${SMTP_HOST}" ]]; then
-  echo "[11] Configuring msmtp for host SMTP relay"
-  cat > /etc/msmtprc <<CONF
-defaults
-auth           on
-tls            ${SMTP_TLS}
-tls_trust_file /etc/ssl/certs/ca-certificates.crt
-logfile        /var/log/msmtp.log
-
-account default
-host ${SMTP_HOST}
-port ${SMTP_PORT}
-user ${SMTP_USER}
-password ${SMTP_PASSWORD}
-from ${SMTP_USER}
-syslog on
-CONF
-  chmod 600 /etc/msmtprc
-fi
+echo "[11] Email alerts disabled; skipping msmtp/mail configuration"
 
 setup_unattended
 setup_host_security_units
@@ -216,7 +191,7 @@ echo "[11] Installing packages and enabling timers on Router VM ($ROUTER_IP)..."
 ssh -o StrictHostKeyChecking=no ${ROUTER_ADMIN_USER}@${ROUTER_IP} bash -s <<'EOSSH'
 set -euo pipefail
 sudo apt-get update -y
-sudo apt-get install -y unattended-upgrades apt-listchanges lynis rkhunter chkrootkit clamav-daemon clamav-freshclam msmtp bsd-mailx
+sudo apt-get install -y unattended-upgrades apt-listchanges lynis rkhunter chkrootkit clamav-daemon clamav-freshclam
 sudo systemctl enable --now clamav-freshclam || true
 echo 'APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";' | sudo tee /etc/apt/apt.conf.d/20auto-upgrades >/dev/null
@@ -224,4 +199,4 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now home-secnet-daily-update.timer home-secnet-daily-lynis.timer home-secnet-daily-rootkit.timer home-secnet-daily-malware.timer || true
 EOSSH
 
-echo "[11] Router maintenance configured. Consider running similar on the Logging VM if desired."
+echo "[11] Router maintenance configured. Logging VM removed from stack."

@@ -65,8 +65,8 @@ else
   ensure_env DHCP_TRUSTED_RANGE "LAN DHCP range" "10.20.0.100 10.20.0.200"
 fi
 
-# Double-hop egress
-ensure_choice DOUBLE_HOP_ENABLE "Enable WG double-hop egress?" "false" "true,false"
+# Double-hop egress (default ON)
+ensure_choice DOUBLE_HOP_ENABLE "Enable WG double-hop egress?" "true" "true,false"
 if [[ "$DOUBLE_HOP_ENABLE" == "true" ]]; then
   ensure_env WG2_ADDRESS "Router wg1 address (CIDR)" "10.67.0.2/32"
   ensure_env WG2_ENDPOINT "Exit endpoint (host:port)" "exit.example.com:51820"
