@@ -68,7 +68,6 @@ export DNS_RECURSORS="${DNS_RECURSORS}"
 export ROUTER_WAN_IF=${ROUTER_WAN_IF}
 export ROUTER_LAN_IF=${ROUTER_LAN_IF}
 export DNS_STACK=${DNS_STACK}
-export LOG_VM_IP=${LOG_VM_IP}
 export WG_PRIVATE_KEY=${WG_PRIVATE_KEY}
 export WG_PUBLIC_KEY=${WG_PUBLIC_KEY}
 EOF
@@ -296,9 +295,41 @@ Endpoint = <YOUR_PUB_IP>:${WG_PORT}
 PersistentKeepalive = ${WG_PERSISTENT_KEEPALIVE}
 EOF
 
-# Optional: router rsyslog forwarding to central log VM
-cat > "$ROOT_DIR/render/router/configs/rsyslog-remote.conf" <<EOF
-*.* @@${LOG_VM_IP}:514
+# Local secure logging configuration
+cat > "$ROOT_DIR/render/router/configs/rsyslog-secure.conf" <<EOF
+# Secure local logging configuration
+# Create secure log directory
+\$CreateDirs on
+\$DirCreateMode 0750
+\$FileCreateMode 0640
+
+# Log all system logs to secure directory
+*.* /var/log/secure/system.log
+
+# Log authentication events
+auth,authpriv.* /var/log/secure/auth.log
+
+# Log kernel messages
+kern.* /var/log/secure/kernel.log
+
+# Log mail events
+mail.* /var/log/secure/mail.log
+
+# Log cron events
+cron.* /var/log/secure/cron.log
+
+# Log daemon events
+daemon.* /var/log/secure/daemon.log
+
+# Log local events
+local0.* /var/log/secure/local.log
+local1.* /var/log/secure/local.log
+local2.* /var/log/secure/local.log
+local3.* /var/log/secure/local.log
+local4.* /var/log/secure/local.log
+local5.* /var/log/secure/local.log
+local6.* /var/log/secure/local.log
+local7.* /var/log/secure/local.log
 EOF
 
 echo "[08] Render complete. Artifacts under render/ and clients/."

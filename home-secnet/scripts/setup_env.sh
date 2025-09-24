@@ -28,6 +28,13 @@ if [[ "$WRAP_MODE" == "hysteria2" ]]; then
   ensure_env WRAP_DOMAIN "Hysteria2 SNI/Server Name (optional)" ""
 fi
 
+# Single Packet Authorization (SPA)
+ensure_choice SPA_ENABLE "Enable Single Packet Authorization?" "false" "true,false"
+if [[ "$SPA_ENABLE" == "true" ]]; then
+  ensure_env SPA_PORT "SPA knock port" "62201" '^[0-9]{2,5}$'
+  ensure_env SPA_TIMEOUT "SPA access timeout (seconds)" "30" '^[0-9]+$'
+fi
+
 # WireGuard basics
 default_port=$(random_high_port)
 ensure_env WG_PORT "WireGuard UDP port" "$default_port" '^[0-9]{4,5}$'
@@ -65,8 +72,8 @@ else
   ensure_env DHCP_TRUSTED_RANGE "LAN DHCP range" "10.20.0.100 10.20.0.200"
 fi
 
-# Double-hop egress (default ON)
-ensure_choice DOUBLE_HOP_ENABLE "Enable WG double-hop egress?" "true" "true,false"
+# Double-hop egress (optional)
+ensure_choice DOUBLE_HOP_ENABLE "Enable WG double-hop egress?" "false" "true,false"
 if [[ "$DOUBLE_HOP_ENABLE" == "true" ]]; then
   ensure_env WG2_ADDRESS "Router wg1 address (CIDR)" "10.67.0.2/32"
   ensure_env WG2_ENDPOINT "Exit endpoint (host:port)" "exit.example.com:51820"
@@ -75,6 +82,23 @@ if [[ "$DOUBLE_HOP_ENABLE" == "true" ]]; then
 fi
 
 ensure_env DNS_RECURSORS "Upstream DNS forwarders (optional)" "9.9.9.9 1.1.1.1"
+
+# Router Interface Names
+ensure_env ROUTER_WAN_IF "Router WAN interface name" "ens18"
+ensure_env ROUTER_LAN_IF "Router LAN interface name" "ens19"
+
+# Bridge Names
+ensure_env VM_BR_WAN "WAN bridge name" "vmbr0"
+ensure_env VM_BR_LAN "LAN bridge name" "vmbr1"
+
+# Security Configuration
+ensure_choice DISABLE_USB_STORAGE "Disable USB storage?" "true" "true,false"
+ensure_choice HARDEN_AUDITD "Enable auditd hardening?" "true" "true,false"
+ensure_choice INSTALL_AIDE "Install AIDE file integrity monitor?" "true" "true,false"
+ensure_choice FAIL2BAN_ENABLE "Enable fail2ban?" "true" "true,false"
+
+# Software Versions
+ensure_env ADGUARD_VERSION "AdGuard Home version" "latest"
 
 # Proxmox defaults
 ensure_env PVE_NODE "Proxmox node name" "$(hostname)"
@@ -86,21 +110,24 @@ ensure_env ROUTER_VM_NAME "Router VM name" "router-vm"
 ensure_env ROUTER_CPU "Router CPU cores" "4" '^[0-9]+$'
 ensure_env ROUTER_RAM "Router RAM (MB)" "4096" '^[0-9]+$'
 
-ensure_env LOG_VM_ID "Logging VMID" "202" '^[0-9]+$'
-ensure_env LOG_VM_NAME "Logging VM name" "log-vm"
-ensure_env LOG_CPU "Logging CPU cores" "2" '^[0-9]+$'
-ensure_env LOG_RAM "Logging RAM (MB)" "2048" '^[0-9]+$'
 
-# Admins and SSH keys
+# Admin and SSH key
 ensure_env ROUTER_ADMIN_USER "Router admin username" "admin"
-ensure_env LOG_ADMIN_USER "Logging admin username" "admin"
 
 router_key_default=""
 if [[ -f "$HOME/.ssh/id_ed25519.pub" ]]; then router_key_default=$(cat "$HOME/.ssh/id_ed25519.pub"); fi
 ensure_env ROUTER_ADMIN_PUBKEY "Paste Router admin SSH public key" "${router_key_default:-ssh-ed25519 AAAA... yourkey}"
 
-log_key_default=""
-if [[ -f "$HOME/.ssh/id_ed25519.pub" ]]; then log_key_default=$(cat "$HOME/.ssh/id_ed25519.pub"); fi
-ensure_env LOG_ADMIN_PUBKEY "Paste Logging admin SSH public key" "${log_key_default:-ssh-ed25519 AAAA... yourkey}"
+
+# Alert Email Configuration
+ensure_env ALERT_EMAIL "Alert email address (optional)" ""
+ensure_choice SMTP_ENABLE "Enable SMTP relay for alerts?" "false" "true,false"
+if [[ "$SMTP_ENABLE" == "true" ]]; then
+  ensure_env SMTP_HOST "SMTP server hostname" ""
+  ensure_env SMTP_PORT "SMTP server port" "587" '^[0-9]+$'
+  ensure_env SMTP_USER "SMTP username" ""
+  ensure_env SMTP_PASS "SMTP password" ""
+  ensure_env SMTP_FROM "SMTP from address" ""
+fi
 
 echo "[01] .env updated with provided values."

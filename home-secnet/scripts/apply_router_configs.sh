@@ -76,6 +76,10 @@ fi
 sudo cp /opt/router/suricata.yaml /etc/suricata/suricata.yaml
 sudo install -m 0755 /opt/router/tc-shaping.sh /opt/router/tc-shaping.sh
 rm -f /etc/rsyslog.d/90-remote.conf 2>/dev/null || true
+if [[ -f /opt/router/rsyslog-secure.conf ]]; then
+  sudo cp /opt/router/rsyslog-secure.conf /etc/rsyslog.d/99-secure.conf
+  sudo systemctl restart rsyslog
+fi
 
 # Install daily security maintenance timers
 sudo install -d -m 0755 /opt/router/security

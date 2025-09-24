@@ -24,20 +24,7 @@ else
   echo "[13] Updating Proxmox bridges to non-VLAN-aware..."
   bash "$ROOT_DIR/scripts/configure_bridges.sh"
 
-  echo "[13] Ensuring Logging VM NIC has no VLAN tag..."
-  if qm status "$LOG_VM_ID" >/dev/null 2>&1; then
-    cfg=$(qm config "$LOG_VM_ID" | awk -F': ' '/^net0:/ {print $2}')
-    # remove ,tag=... if present, preserve MAC and other params
-    newcfg=$(echo "$cfg" | sed -E 's/,tag=[0-9]+//g')
-    if [[ "$cfg" != "$newcfg" ]]; then
-      echo "[13] Updating net0: $cfg -> $newcfg"
-      qm set "$LOG_VM_ID" --net0 "$newcfg"
-    else
-      echo "[13] Logging VM NIC already untagged."
-    fi
-  else
-    echo "[13] Logging VM $LOG_VM_ID not found; skipping NIC tag update."
-  fi
+  echo "[13] Logging VM removed from stack; skipping VM NIC updates."
 fi
 
 echo "[13] Regenerating router configs for flat LAN..."

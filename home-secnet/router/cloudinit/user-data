@@ -26,4 +26,6 @@ runcmd:
   - [ bash, -lc, "if [ -f /etc/wireguard/wg0.conf ]; then systemctl enable --now wg-quick@wg0; fi" ]
   - [ bash, -lc, "if [ -f /etc/unbound/unbound.conf ]; then systemctl enable --now unbound; fi" ]
   - [ bash, -lc, "mkdir -p /opt/router && echo '# bootstrap placeholder' > /opt/router/bootstrap.sh && chmod +x /opt/router/bootstrap.sh" ]
+  - [ bash, -lc, "sudo mkdir -p /var/log/secure && sudo chown syslog:adm /var/log/secure && sudo chmod 750 /var/log/secure" ]
+  - [ bash, -lc, "if [ -f /etc/rsyslog.d/rsyslog-secure.conf ]; then systemctl restart rsyslog; fi" ]
 final_message: "Router cloud-init complete."

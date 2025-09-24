@@ -12,7 +12,6 @@ all:
 	bash scripts/configure_bridges.sh
 	bash scripts/prepare_cloud_image.sh
 	bash scripts/create_router_vm.sh
-	bash scripts/create_logging_vm.sh
 	bash scripts/render_router_configs.sh
 	bash scripts/apply_router_configs.sh
 	bash scripts/apply_node_firewall.sh

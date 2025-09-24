@@ -1,6 +1,6 @@
 home-secnet
 
-Turn‑key automation for a Proxmox‑based, zero‑trust, WireGuard‑first home network. It provisions an Ubuntu Router VM with nftables, WireGuard, AdGuard Home or Unbound, ISC DHCP, Suricata (inline), and traffic shaping; an optional Logging VM; per‑VLAN DHCP with deny‑by‑default east‑west; and a Proxmox UI reachable only over WireGuard.
+Turn‑key automation for a Proxmox‑based, zero‑trust, WireGuard‑first home network. It provisions an Ubuntu Router VM with nftables, WireGuard, AdGuard Home or Unbound, ISC DHCP, Suricata (inline), and traffic shaping; per‑VLAN DHCP with deny‑by‑default east‑west; and a Proxmox UI reachable only over WireGuard.
 
 Quick Start (Runbook)
 - Preflight (tools & distro check): `bash scripts/preflight.sh`
@@ -10,7 +10,6 @@ Quick Start (Runbook)
 - Create bridges: `bash scripts/configure_bridges.sh`
 - Fetch cloud image: `bash scripts/prepare_cloud_image.sh`
 - Create Router VM: `bash scripts/create_router_vm.sh`
-- Create Logging VM: `bash scripts/create_logging_vm.sh`
 - Render router configs: `bash scripts/render_router_configs.sh`
 - Push/apply configs: `bash scripts/apply_router_configs.sh` (prompts for `ROUTER_IP` if needed)
 - Lock down node firewall: `bash scripts/apply_node_firewall.sh`
@@ -50,7 +49,7 @@ DNS Options
 
 Suricata & Logging
 - Suricata is configured inline on VLAN subinterfaces. Tune with `suricata-update` on the Router VM.
-- EVE JSON logs at `/var/log/suricata/eve.json`; forward via rsyslog to the Logging VM if desired.
+- EVE JSON logs at `/var/log/suricata/eve.json`; logs are stored locally in `/var/log/secure/` for centralized access.
 
 Proxmox Firewall
 - Node firewall rules are rendered from `.env` and installed during the flow.
@@ -78,6 +77,6 @@ Notes & Limitations
 
 Migration
 - If you started with VLANs and want a flat LAN:
-  - Run `bash scripts/migrate_to_flat_lan.sh` on the Proxmox host to update bridges, remove VM NIC VLAN tags (Logging VM), regenerate configs, and push to the Router VM. Router configs are backed up before replacement.
+  - Run `bash scripts/migrate_to_flat_lan.sh` on the Proxmox host to update bridges, remove VM NIC VLAN tags, regenerate configs, and push to the Router VM. Router configs are backed up before replacement.
   - The Router VM LAN interface remains `${ROUTER_LAN_IF}` with IP `${GW_TRUSTED}`; VLAN subinterfaces are removed by netplan.
   - DHCP will listen only on `${ROUTER_LAN_IF}`.
