@@ -38,7 +38,7 @@ WireGuard Access
 - Router config is applied to `/etc/wireguard/wg0.conf`.
 - A sample client is created at `clients/wg-client1.conf`; set `Endpoint = <YOUR_PUB_IP>:${WG_PORT}` before use.
 - Optional QUIC wrapper: set `WRAP_MODE=hysteria2` to run Hysteria2 on UDP `${WRAP_LISTEN_PORT}` and forward to WireGuard. A sample `clients/hysteria2-client.yaml` is generated.
-- SPA (Single Packet Authorization): set `SPA_ENABLE=true` to gate WireGuard. Default mode is `SPA_MODE=pqkem` (post‑quantum KEM + HMAC). Legacy fwknop mode is available when `SPA_MODE` is not `pqkem`.
+- SPA (Single Packet Authorization): set `SPA_ENABLE=true` to gate WireGuard. Default mode is `SPA_MODE=pqkem` (post‑quantum KEM + HMAC). Legacy fwknop mode has been removed.
 
 Double-Hop Egress (Optional)
 - Enable with `DOUBLE_HOP_ENABLE=true` and fill `WG2_*` in `.env`. This creates `/etc/wireguard/wg1.conf` on the router and policy routes WG client traffic out via the remote exit node. Configure the exit node to accept `${WG2_ADDRESS}` and allow forwarding/NAT.

@@ -193,7 +193,7 @@ fi
 # SPA configs
 # SPA configs
 if [[ "${SPA_ENABLE:-false}" == "true" ]]; then
-  if [[ "${SPA_MODE:-legacy}" == "pqkem" ]]; then
+  if [[ "${SPA_MODE:-pqkem}" == "pqkem" ]]; then
     echo "[08] SPA mode: PQ-KEM (Kyber + HMAC)"
     SPAQ_DIR="$ROOT_DIR/render/spa/pq"
     mkdir -p "$SPAQ_DIR" "$ROOT_DIR/render/router/systemd"
@@ -258,49 +258,8 @@ WantedBy=multi-user.target
 EOF
     echo "[08] PQ-KEM SPA artifacts prepared under render/spa/pq and render/router/systemd/."
   else
-    # Legacy SPA via fwknop
-    # Generate separate keys for encryption and HMAC if not set
-    SPA_DIR="$ROOT_DIR/render/spa"
-    mkdir -p "$SPA_DIR"
-    
-    if [[ -z "${SPA_KEY:-}" ]]; then
-      SPA_KEY=$(head -c 32 /dev/urandom | base64)
-      # Persist key
-      if grep -q '^SPA_KEY=' "$ROOT_DIR/.env"; then
-        awk -v k="SPA_KEY" -v v="$SPA_KEY" 'BEGIN{FS=OFS="="} $1==k {$0=k"="v} {print}' "$ROOT_DIR/.env" > "$ROOT_DIR/.env.tmp" && mv "$ROOT_DIR/.env.tmp" "$ROOT_DIR/.env"
-      else
-        echo "SPA_KEY=$SPA_KEY" >> "$ROOT_DIR/.env"
-      fi
-    fi
-    
-    if [[ -z "${SPA_HMAC_KEY:-}" ]]; then
-      SPA_HMAC_KEY=$(head -c 32 /dev/urandom | base64)
-      # Persist HMAC key
-      if grep -q '^SPA_HMAC_KEY=' "$ROOT_DIR/.env"; then
-        awk -v k="SPA_HMAC_KEY" -v v="$SPA_HMAC_KEY" 'BEGIN{FS=OFS="="} $1==k {$0=k"="v} {print}' "$ROOT_DIR/.env" > "$ROOT_DIR/.env.tmp" && mv "$ROOT_DIR/.env.tmp" "$ROOT_DIR/.env"
-      else
-        echo "SPA_HMAC_KEY=$SPA_HMAC_KEY" >> "$ROOT_DIR/.env"
-      fi
-    fi
-    
-    export SPA_HMAC_KEY
-    render "$ROOT_DIR/router/configs/fwknopd.conf" "$ROOT_DIR/render/router/configs/fwknopd.conf"
-    render "$ROOT_DIR/router/configs/access.conf" "$ROOT_DIR/render/router/configs/access.conf"
-    
-    # Generate SPA client configuration
-    cat > "$ROOT_DIR/clients/spa-client.conf" <<EOF
-# SPA Client Configuration (fwknop)
-# Use with: fwknop -A tcp/22 -D <server_ip> -s -k <key> -a <hmac_key> -n <name>
-SPA_SERVER_IP=<YOUR_PUB_IP>
-SPA_SERVER_PORT=${SPA_PORT}
-SPA_KEY=${SPA_KEY}
-SPA_HMAC_KEY=${SPA_HMAC_KEY}
-SPA_TIMEOUT=${SPA_TIMEOUT}
-
-# Example command:
-# fwknop -A tcp/${WG_PORT} -D \${SPA_SERVER_IP} -s -k \${SPA_KEY} -a \${SPA_HMAC_KEY} -n home-secnet
-EOF
-    echo "[08] SPA (fwknop) enabled. Client config saved to clients/spa-client.conf"
+    echo "[08] Legacy fwknop mode is no longer supported. Set SPA_MODE=pqkem."
+    exit 1
   fi
 fi
 

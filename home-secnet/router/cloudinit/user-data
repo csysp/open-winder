@@ -11,17 +11,55 @@ package_update: true
 packages:
   - nftables
   - wireguard
-  - resolvconf
-  - net-tools
+  - ifupdown2
+  - iproute2
   - isc-dhcp-server
   - unbound
   - suricata
-  - ifupdown2
-  - iproute2
-  - fwknop-server
+  - unattended-upgrades
+write_files:
+  - path: /etc/sysctl.d/99-winder-router.conf
+    permissions: "0644"
+    content: |
+      # Winder Router hardening
+      net.ipv4.ip_forward=1
+      net.ipv4.conf.all.rp_filter=1
+      net.ipv4.conf.default.rp_filter=1
+      net.ipv4.conf.all.accept_redirects=0
+      net.ipv4.conf.default.accept_redirects=0
+      net.ipv4.conf.all.send_redirects=0
+      net.ipv4.icmp_echo_ignore_broadcasts=1
+      net.ipv4.tcp_syncookies=1
+      net.ipv6.conf.all.accept_ra=0
+      kernel.kptr_restrict=2
+      kernel.dmesg_restrict=1
+      kernel.unprivileged_bpf_disabled=1
+      net.core.bpf_jit_harden=2
+  - path: /etc/ssh/sshd_config.d/99-winder.conf
+    permissions: "0644"
+    content: |
+      # Winder Router SSH policy
+      PasswordAuthentication no
+      PermitRootLogin no
+      PubkeyAuthentication yes
+      KbdInteractiveAuthentication no
+      MaxAuthTries 3
+      LoginGraceTime 20
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+  - path: /etc/systemd/journald.conf.d/winder-router.conf
+    permissions: "0644"
+    content: |
+      [Journal]
+      Storage=auto
+      SystemMaxUse=200M
+      MaxRetentionSec=7day
+      RateLimitIntervalSec=10s
+      RateLimitBurst=1000
 runcmd:
-  - [ sysctl, -w, net.ipv4.ip_forward=1 ]
   - [ systemctl, enable, --now, nftables ]
+  - [ bash, -lc, "sysctl --system" ]
+  - [ systemctl, restart, ssh ]
   - [ systemctl, enable, --now, isc-dhcp-server ]
   - [ systemctl, enable, --now, suricata ]
   - [ bash, -lc, "if [ -f /etc/wireguard/wg0.conf ]; then systemctl enable --now wg-quick@wg0; fi" ]
@@ -29,4 +67,8 @@ runcmd:
   - [ bash, -lc, "mkdir -p /opt/router && echo '# bootstrap placeholder' > /opt/router/bootstrap.sh && chmod +x /opt/router/bootstrap.sh" ]
   - [ bash, -lc, "sudo mkdir -p /var/log/secure && sudo chown syslog:adm /var/log/secure && sudo chmod 750 /var/log/secure" ]
   - [ bash, -lc, "if [ -f /etc/rsyslog.d/rsyslog-secure.conf ]; then systemctl restart rsyslog; fi" ]
+  - [ bash, -lc, "install -d -m 0700 /etc/spa" ]
+  - [ bash, -lc, "chmod 600 /etc/wireguard/*.conf 2>/dev/null || true" ]
+  - [ bash, -lc, "apt-get -y install unattended-upgrades && dpkg-reconfigure -f noninteractive unattended-upgrades" ]
+  - [ bash, -lc, "if [ \"${USE_IPV6:-false}\" = \"false\" ]; then echo 'net.ipv6.conf.all.disable_ipv6=1' > /etc/sysctl.d/99-winder-ipv6.conf && sysctl --system; fi" ]
 final_message: "Router cloud-init complete."

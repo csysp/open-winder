@@ -142,7 +142,7 @@ fi
 
 # Configure SPA gating if enabled (only when access.conf is present)
 if [[ "${SPA_ENABLE}" == "true" ]]; then
-  if [[ "${SPA_MODE:-legacy}" == "pqkem" ]]; then
+  if [[ "${SPA_MODE:-pqkem}" == "pqkem" ]]; then
     echo "[router] Configuring PQ-KEM SPA daemon"
     # Ensure nftables table/chain as a safety net (nftables.conf should already include these)
     sudo nft list table inet filter >/dev/null 2>&1 || sudo nft add table inet filter || true
@@ -188,14 +188,9 @@ if [[ "${SPA_ENABLE}" == "true" ]]; then
     sudo systemctl enable --now spa-pq.service
     # Ensure fwknopd is stopped if previously installed
     sudo systemctl disable --now fwknopd 2>/dev/null || true
-  elif [[ -f /opt/router/access.conf ]]; then
-    # legacy fwknop mode
-    sudo install -m 0755 /opt/router/systemd/fwknop/fwknop-add.sh /opt/router/fwknop-add.sh
-    sudo apt-get update -y && sudo apt-get install -y fwknop-server || true
-    sudo mkdir -p /etc/fwknopd
-    sudo cp /opt/router/fwknopd.conf /etc/fwknopd/fwknopd.conf
-    sudo cp /opt/router/access.conf /etc/fwknopd/access.conf
-    sudo systemctl enable --now fwknopd
+  else
+    echo "[router] Legacy fwknop mode is no longer supported. Set SPA_MODE=pqkem."
+    exit 1
   fi
 fi
 

@@ -103,7 +103,7 @@ Style Check Shortlist (copy/paste at top of new scripts)
 Docs Consistency Guide
 - Defaults
   - Refer to the router system as “Winder”. The `home-secnet/` directory name is an implementation detail.
-  - PQ‑KEM SPA (Kyber‑768 + HMAC) is the default SPA mode. Legacy fwknop remains available when `SPA_MODE` is not `pqkem`.
+  - PQ‑KEM SPA (Kyber‑768 + HMAC) is the SPA mode. Legacy fwknop has been removed.
 - Sources of truth
   - Top‑level overview and links: `README.md`.
   - Runbook, scripts, env vars, and targets: `home-secnet/README.md`.
