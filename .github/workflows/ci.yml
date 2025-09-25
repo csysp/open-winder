@@ -10,6 +10,9 @@ jobs:
   rust:
     name: Rust fmt/clippy/build/test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
@@ -25,17 +28,12 @@ jobs:
           cargo build --release
           cargo test --all --release
       - name: Build client
-        working-directory: home-secnet/clients/spa-pq-client
-        shell: bash
         run: |
-          if [ -d . ]; then
-            cargo fmt --all -- --check
-            cargo clippy --all-targets -- -D warnings
-            cargo build --release
-            cargo test --all --release || true
-          else
-            echo "client directory missing; skipping"
-          fi
+          cd home-secnet/clients/spa-pq-client
+          cargo fmt --all -- --check
+          cargo clippy --all-targets -- -D warnings
+          cargo build --release
+          cargo test --all --release || true
 
   shell:
     name: Shell lint
