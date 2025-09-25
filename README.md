@@ -25,3 +25,4 @@ Manually run scans/builds
 
 Notes
 - These scripts are intended to run on a Proxmox host for provisioning and configuration.
+- CI builds the PQ SPA server/client crates and lints shell scripts on each push.
