@@ -13,15 +13,22 @@ ExecStart=/usr/local/bin/home-secnet-spa-pq run \
   --window-secs ${SPA_PQ_WINDOW_SECS} \
   --nft-table inet \
   --nft-chain wg_spa_allow
+User=winder-spa
+Group=winder-spa
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+RestrictAddressFamilies=AF_INET AF_INET6
+ReadOnlyPaths=/usr
+ReadWritePaths=/etc/spa
 Restart=on-failure
 RestartSec=1s
 
 [Install]
 WantedBy=multi-user.target
-

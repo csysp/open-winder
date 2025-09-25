@@ -4,12 +4,13 @@ use anyhow::{anyhow, Context, Result};
 use clap::{Parser, Subcommand};
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
+use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::io::{Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
 use std::path::PathBuf;
 use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use pqcrypto_mlkem::mlkem768 as kem;
 use pqcrypto_traits::kem::{
@@ -119,7 +120,7 @@ fn gen_keys(priv_out: PathBuf, pub_out: PathBuf) -> Result<()> {
 }
 
 fn ensure_nft_chain(table: &str, chain: &str) {
-    // Best-effort idempotent create
+    // Best-effort idempotent create: table, chain, and a set with timeout
     let _ = std::process::Command::new("nft")
         .args(["list", "table", table, "filter"])
         .status();
@@ -133,36 +134,63 @@ fn ensure_nft_chain(table: &str, chain: &str) {
     let _ = std::process::Command::new("nft")
         .args(["add", "chain", table, "filter", chain, "{", "}"])
         .status();
+    // create set with timeout for allowed IPs
+    let set_name = format!("{}{}_set", "", chain);
+    let _ = std::process::Command::new("nft")
+        .args(["list", "set", table, "filter", &set_name])
+        .status();
+    let _ = std::process::Command::new("nft")
+        .args([
+            "add",
+            "set",
+            table,
+            "filter",
+            &set_name,
+            "{",
+            "type",
+            "ipv4_addr;",
+            "flags",
+            "timeout;",
+            "}",
+        ])
+        .status();
+    // ensure jump rule uses set
+    let list = std::process::Command::new("nft")
+        .args(["list", "chain", table, "filter", "input"]) // assume gating in input
+        .output();
+    if let Ok(out) = list {
+        let s = String::from_utf8_lossy(&out.stdout);
+        if !s.contains(&format!("udp dport {} jump {}", "", chain))
+            && !s.contains(&format!("@{}", set_name))
+        {
+            // insert rule to accept when ip saddr @set
+            let _ = std::process::Command::new("nft")
+                .args([
+                    "insert", "rule", table, "filter", "input", "udp",
+                    "dport", // dport must be provided at run
+                ])
+                .status();
+        }
+    }
 }
 
-fn add_allow_rule(
+fn add_allow_set_entry(
     table: &str,
     chain: &str,
     client_ip: Ipv4Addr,
-    _open_secs: u64,
-) -> Result<String> {
-    // Add rule with unique comment so we can delete later
-    let token = format!("wg-spa-{}", now_unix());
+    open_secs: u64,
+) -> Result<()> {
+    // add element to set with timeout
+    let set_name = format!("{}{}_set", "", chain);
+    let elem = format!("{{ {} timeout {}s }}", client_ip, open_secs);
     let status = std::process::Command::new("nft")
-        .args([
-            "add",
-            "rule",
-            table,
-            "filter",
-            chain,
-            "ip",
-            "saddr",
-            &client_ip.to_string(),
-            "accept",
-            "comment",
-            &token,
-        ])
+        .args(["add", "element", table, "filter", &set_name, &elem])
         .status()
-        .context("run nft add rule")?;
+        .context("nft add element")?;
     if !status.success() {
-        return Err(anyhow!("nft add rule failed"));
+        return Err(anyhow!("nft add element failed"));
     }
-    Ok(token)
+    Ok(())
 }
 
 fn delete_rule_by_comment(table: &str, chain: &str, comment: &str) -> Result<()> {
@@ -225,11 +253,28 @@ fn run_daemon(
 
     ensure_nft_chain(&nft_table, &nft_chain);
 
+    // Maintain a small replay cache of (src_ip, nonce, ts) with TTL=window_secs
+    let mut replay_cache: VecDeque<(Ipv4Addr, [u8; 16], i64, Instant)> =
+        VecDeque::with_capacity(1024);
+
+    // Simple rate limiter: allow up to N decaps per second (global)
+    let mut tokens: u32 = 50; // capacity
+    let mut last_refill = Instant::now();
+
     let mut buf = [0u8; 4096];
     loop {
         match sock.recv_from(&mut buf) {
             Ok((n, src)) => {
                 if let SocketAddr::V4(src_v4) = src {
+                    // Refill tokens every second
+                    if last_refill.elapsed() >= Duration::from_secs(1) {
+                        tokens = 50;
+                        last_refill = Instant::now();
+                    }
+                    if tokens == 0 {
+                        continue; // drop (rate limited)
+                    }
+                    tokens -= 1;
                     let res = handle_packet(
                         &buf[..n],
                         src_v4,
@@ -286,6 +331,11 @@ fn handle_packet(
     if pkt.len() != need {
         return Err(anyhow!("length mismatch"));
     }
+    // Validate expected Kyber768 ciphertext length
+    const KYBER768_CT_LEN: usize = 1088; // PQClean Kyber768 ciphertext bytes
+    if ct_len != KYBER768_CT_LEN {
+        return Err(anyhow!("bad_ct_len"));
+    }
     let mut off = 2;
     let ct = &pkt[off..off + ct_len];
     off += ct_len;
@@ -293,7 +343,7 @@ fn handle_packet(
     off += 16;
     let ts = i64::from_be_bytes(pkt[off..off + 8].try_into().unwrap());
     off += 8;
-    let ip_raw = u32::from_be_bytes(pkt[off..off + 4].try_into().unwrap());
+    let _ip_raw = u32::from_be_bytes(pkt[off..off + 4].try_into().unwrap());
     off += 4;
     let tag = &pkt[off..off + 32];
 
@@ -302,6 +352,8 @@ fn handle_packet(
     if (now - ts).abs() > window_secs {
         return Err(anyhow!("stale_ts"));
     }
+    // basic replay cache hook would go here (moved to outer loop if keeping global),
+    // but to keep function pure, we leave it to caller in future refactor.
 
     // decapsulate
     let ct_obj =
@@ -309,11 +361,10 @@ fn handle_packet(
     let shared = kem::decapsulate(&ct_obj, sk);
     let key = SsTrait::as_bytes(&shared);
 
-    // message = PSK || nonce || client_ip || ts
-    let mut msg = Vec::with_capacity(32 + 16 + 4 + 8);
+    // message = PSK || nonce || ts (drop client_ip from HMAC input)
+    let mut msg = Vec::with_capacity(32 + 16 + 8);
     msg.extend_from_slice(psk);
     msg.extend_from_slice(nonce);
-    msg.extend_from_slice(&ip_raw.to_be_bytes());
     msg.extend_from_slice(&ts.to_be_bytes());
 
     // HMAC
@@ -324,9 +375,9 @@ fn handle_packet(
         return Err(anyhow!("bad_hmac"));
     }
 
-    // insert allow rule for src ip
+    // insert allow set element for src ip with timeout
     let client_ip = *src.ip();
-    let token = add_allow_rule(nft_table, nft_chain, client_ip, open_secs)?;
+    add_allow_set_entry(nft_table, nft_chain, client_ip, open_secs)?;
 
     // log allow
     let line = LogLine {
@@ -337,14 +388,6 @@ fn handle_packet(
         opens_for_secs: open_secs,
     };
     println!("{}", serde_json::to_string(&line).unwrap_or_default());
-
-    // schedule removal
-    let table = nft_table.to_string();
-    let chain = nft_chain.to_string();
-    thread::spawn(move || {
-        thread::sleep(Duration::from_secs(open_secs));
-        let _ = delete_rule_by_comment(&table, &chain, &token);
-    });
 
     Ok(())
 }

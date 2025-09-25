@@ -151,6 +151,10 @@ if [[ "${SPA_ENABLE}" == "true" ]]; then
     if ! sudo nft list chain inet filter input | grep -q "udp dport ${WG_PORT} jump wg_spa_allow"; then
       sudo nft insert rule inet filter input udp dport ${WG_PORT} jump wg_spa_allow
     fi
+    # Create service user
+    if ! id -u winder-spa >/dev/null 2>&1; then
+      sudo useradd --system --no-create-home --shell /usr/sbin/nologin winder-spa || true
+    fi
     # Install toolchain and build server from source
     sudo apt-get update -y && sudo apt-get install -y rustc cargo pkg-config build-essential
     if [[ -d /opt/router/spa-pq-src ]]; then
