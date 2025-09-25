@@ -12,6 +12,7 @@ use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use pqcrypto_mlkem::mlkem768 as kem;
+use pqcrypto_traits::kem::{Ciphertext as CtTrait, PublicKey as PkTrait, SecretKey as SkTrait, SharedSecret as SsTrait};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -105,8 +106,8 @@ fn write_file(path: &PathBuf, data: &[u8], mode: Option<u32>) -> Result<()> {
 
 fn gen_keys(priv_out: PathBuf, pub_out: PathBuf) -> Result<()> {
     let (pk, sk) = kem::keypair();
-    write_file(&priv_out, sk.as_bytes(), Some(0o600))?;
-    write_file(&pub_out, pk.as_bytes(), Some(0o644))?;
+    write_file(&priv_out, SkTrait::as_bytes(&sk), Some(0o600))?;
+    write_file(&pub_out, PkTrait::as_bytes(&pk), Some(0o644))?;
     eprintln!(
         "generated ML-KEM-768 keypair: priv={}, pub={}",
         priv_out.display(),
@@ -216,7 +217,7 @@ fn run_daemon(
     }
 
     // reconstruct secret key
-    let sk = kem::SecretKey::from_bytes(&kem_priv_bytes)
+    let sk = <kem::SecretKey as SkTrait>::from_bytes(&kem_priv_bytes)
         .map_err(|_| anyhow!("invalid KEM private key"))?;
 
     ensure_nft_chain(&nft_table, &nft_chain);
@@ -298,9 +299,9 @@ fn handle_packet(
     }
 
     // decapsulate
-    let ct_obj = kem::Ciphertext::from_bytes(ct).map_err(|_| anyhow!("decap_failed"))?;
-    let shared = kem::decapsulate(&ct_obj, sk).map_err(|_| anyhow!("decap_failed"))?;
-    let key = shared.as_bytes();
+    let ct_obj = <kem::Ciphertext as CtTrait>::from_bytes(ct).map_err(|_| anyhow!("decap_failed"))?;
+    let shared = kem::decapsulate(&ct_obj, sk);
+    let key = SsTrait::as_bytes(&shared);
 
     // message = PSK || nonce || client_ip || ts
     let mut msg = Vec::with_capacity(32 + 16 + 4 + 8);
@@ -318,8 +319,8 @@ fn handle_packet(
     }
 
     // insert allow rule for src ip
-    let client_ip = src.ip().clone();
-    let token = add_allow_rule(nft_table, nft_chain, *client_ip, open_secs)?;
+    let client_ip = *src.ip();
+    let token = add_allow_rule(nft_table, nft_chain, client_ip, open_secs)?;
 
     // log allow
     let line = LogLine {
@@ -371,7 +372,7 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::RngCore;
+    // no external RNG used in current tests
 
     #[test]
     fn hmac_message_format() {
