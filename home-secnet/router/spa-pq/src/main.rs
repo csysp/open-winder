@@ -132,7 +132,12 @@ fn ensure_nft_chain(table: &str, chain: &str) {
         .status();
 }
 
-fn add_allow_rule(table: &str, chain: &str, client_ip: Ipv4Addr, _open_secs: u64) -> Result<String> {
+fn add_allow_rule(
+    table: &str,
+    chain: &str,
+    client_ip: Ipv4Addr,
+    _open_secs: u64,
+) -> Result<String> {
     // Add rule with unique comment so we can delete later
     let token = format!("wg-spa-{}", now_unix());
     let status = std::process::Command::new("nft")
