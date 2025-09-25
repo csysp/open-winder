@@ -35,7 +35,12 @@ struct ReplayCache {
 
 impl ReplayCache {
     fn new(ttl: Duration, cap: usize) -> Self {
-        Self { ttl, set: HashSet::with_capacity(cap), order: VecDeque::with_capacity(cap), cap }
+        Self {
+            ttl,
+            set: HashSet::with_capacity(cap),
+            order: VecDeque::with_capacity(cap),
+            cap,
+        }
     }
     fn purge_expired(&mut self, now: Instant) {
         while let Some((t, ip, n, ts)) = self.order.front().cloned() {
@@ -55,7 +60,13 @@ impl ReplayCache {
             }
         }
     }
-    fn seen_or_insert(&mut self, ip: Ipv4Addr, nonce: [u8; NONCE_LEN], ts: i64, now: Instant) -> bool {
+    fn seen_or_insert(
+        &mut self,
+        ip: Ipv4Addr,
+        nonce: [u8; NONCE_LEN],
+        ts: i64,
+        now: Instant,
+    ) -> bool {
         if self.set.contains(&(ip, nonce, ts)) {
             return true;
         }
@@ -370,8 +381,7 @@ fn handle_packet(
     }
 
     // decapsulate
-    let ct_obj =
-        <kem::Ciphertext as CtTrait>::from_bytes(ct).map_err(|_| SpaError::DecapFailed)?;
+    let ct_obj = <kem::Ciphertext as CtTrait>::from_bytes(ct).map_err(|_| SpaError::DecapFailed)?;
     let shared = kem::decapsulate(&ct_obj, sk);
     let key = SsTrait::as_bytes(&shared);
 
@@ -492,16 +502,26 @@ mod tests {
 }
 #[derive(Error, Debug)]
 enum SpaError {
-    #[error("packet too short")] PacketTooShort,
-    #[error("bad_ver")] BadVer,
-    #[error("length mismatch")] LengthMismatch,
-    #[error("bad_ct_len")] BadCtLen,
-    #[error("stale_ts")] StaleTs,
-    #[error("replay")] Replay,
-    #[error("decap_failed")] DecapFailed,
-    #[error("hmac_key")] HmacKey,
-    #[error("bad_hmac")] BadHmac,
-    #[error("nft_missing")] NftMissing,
+    #[error("packet too short")]
+    PacketTooShort,
+    #[error("bad_ver")]
+    BadVer,
+    #[error("length mismatch")]
+    LengthMismatch,
+    #[error("bad_ct_len")]
+    BadCtLen,
+    #[error("stale_ts")]
+    StaleTs,
+    #[error("replay")]
+    Replay,
+    #[error("decap_failed")]
+    DecapFailed,
+    #[error("hmac_key")]
+    HmacKey,
+    #[error("bad_hmac")]
+    BadHmac,
+    #[error("nft_missing")]
+    NftMissing,
 }
 
 fn reason_of(e: &anyhow::Error) -> &'static str {
