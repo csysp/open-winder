@@ -255,7 +255,7 @@ fn run_daemon(
 
     // Maintain a small replay cache of (src_ip, nonce, ts) with TTL=window_secs
     let mut replay_cache: VecDeque<(Ipv4Addr, [u8; 16], i64, Instant)> =
-        VecDeque::with_capacity(1024);
+        VecDeque::with_capacity(2048);
 
     // Simple rate limiter: allow up to N decaps per second (global)
     let mut tokens: u32 = 50; // capacity
@@ -285,6 +285,7 @@ fn run_daemon(
                         &nft_table,
                         &nft_chain,
                         wg_port,
+                        &mut replay_cache,
                     );
                     if let Err(e) = res {
                         // best-effort deny log
@@ -321,6 +322,8 @@ fn handle_packet(
     nft_table: &str,
     nft_chain: &str,
     _wg_port: u16,
+    // replay cache shared from caller
+    replay_cache: &mut VecDeque<(Ipv4Addr, [u8; 16], i64, Instant)>,
 ) -> Result<()> {
     // Packet: u16 ct_len | ct | 16 nonce | i64 ts | u32 client_ip | 32 tag
     if pkt.len() < 2 + 16 + 8 + 4 + 32 {
@@ -352,8 +355,27 @@ fn handle_packet(
     if (now - ts).abs() > window_secs {
         return Err(anyhow!("stale_ts"));
     }
-    // basic replay cache hook would go here (moved to outer loop if keeping global),
-    // but to keep function pure, we leave it to caller in future refactor.
+    // Replay protection: reject duplicate (src_ip, nonce, ts) within window
+    let src_ip = *src.ip();
+    // purge expired entries
+    let ttl = Duration::from_secs(window_secs as u64);
+    let now_instant = Instant::now();
+    while let Some((_, _, _, t)) = replay_cache.front() {
+        if now_instant.duration_since(*t) > ttl {
+            replay_cache.pop_front();
+        } else {
+            break;
+        }
+    }
+    // check duplicate
+    let mut nonce_arr = [0u8; 16];
+    nonce_arr.copy_from_slice(nonce);
+    if replay_cache
+        .iter()
+        .any(|(ip, n, ts_seen, _)| *ip == src_ip && *n == nonce_arr && *ts_seen == ts)
+    {
+        return Err(anyhow!("replay"));
+    }
 
     // decapsulate
     let ct_obj =
@@ -376,8 +398,10 @@ fn handle_packet(
     }
 
     // insert allow set element for src ip with timeout
-    let client_ip = *src.ip();
-    add_allow_set_entry(nft_table, nft_chain, client_ip, open_secs)?;
+    add_allow_set_entry(nft_table, nft_chain, src_ip, open_secs)?;
+
+    // push into replay cache
+    replay_cache.push_back((src_ip, nonce_arr, ts, now_instant));
 
     // log allow
     let line = LogLine {
