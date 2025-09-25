@@ -12,7 +12,9 @@ use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use pqcrypto_mlkem::mlkem768 as kem;
-use pqcrypto_traits::kem::{Ciphertext as CtTrait, PublicKey as PkTrait, SecretKey as SkTrait, SharedSecret as SsTrait};
+use pqcrypto_traits::kem::{
+    Ciphertext as CtTrait, PublicKey as PkTrait, SecretKey as SkTrait, SharedSecret as SsTrait,
+};
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -299,7 +301,8 @@ fn handle_packet(
     }
 
     // decapsulate
-    let ct_obj = <kem::Ciphertext as CtTrait>::from_bytes(ct).map_err(|_| anyhow!("decap_failed"))?;
+    let ct_obj =
+        <kem::Ciphertext as CtTrait>::from_bytes(ct).map_err(|_| anyhow!("decap_failed"))?;
     let shared = kem::decapsulate(&ct_obj, sk);
     let key = SsTrait::as_bytes(&shared);
 
