@@ -26,13 +26,13 @@ jobs:
           cargo fmt --all -- --check
           cargo clippy --all-targets -- -D warnings
           cargo build --release
-          cargo test --all --release
+          cargo test --all
       - name: Build client (manifest-path)
         run: |
           cargo fmt --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --all -- --check
           cargo clippy --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --all-targets -- -D warnings
           cargo build --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --release
-          cargo test --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --all --release || true
+          cargo test --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --all || true
 
   shell:
     name: Shell lint

@@ -4,7 +4,7 @@ use anyhow::{anyhow, Context, Result};
 use clap::{Parser, Subcommand};
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
 use std::io::{Read, Write};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
@@ -13,11 +13,56 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use pqcrypto_mlkem::mlkem768 as kem;
-use pqcrypto_traits::kem::{
-    Ciphertext as CtTrait, PublicKey as PkTrait, SecretKey as SkTrait, SharedSecret as SsTrait,
-};
+use pqcrypto_traits::kem::{Ciphertext as CtTrait, SecretKey as SkTrait, SharedSecret as SsTrait};
 
 type HmacSha256 = Hmac<Sha256>;
+
+// Protocol constants (Kyber/ML-KEM-768)
+const PROTO_VER: u8 = 1;
+const NONCE_LEN: usize = 16;
+const TAG_LEN: usize = 32;
+// Kyber768 ciphertext size in bytes (ML-KEM-768)
+const CT_LEN_KYBER768: usize = 1088;
+
+// Replay cache with O(1) membership and TTL-based purge
+struct ReplayCache {
+    ttl: Duration,
+    set: HashSet<(Ipv4Addr, [u8; NONCE_LEN], i64)>,
+    order: VecDeque<(Instant, Ipv4Addr, [u8; NONCE_LEN], i64)>,
+    cap: usize,
+}
+
+impl ReplayCache {
+    fn new(ttl: Duration, cap: usize) -> Self {
+        Self { ttl, set: HashSet::with_capacity(cap), order: VecDeque::with_capacity(cap), cap }
+    }
+    fn purge_expired(&mut self, now: Instant) {
+        while let Some((t, ip, n, ts)) = self.order.front().cloned() {
+            if now.duration_since(t) > self.ttl {
+                self.order.pop_front();
+                self.set.remove(&(ip, n, ts));
+            } else {
+                break;
+            }
+        }
+        // Hard cap: if exceeded, drop oldest entries
+        while self.order.len() > self.cap {
+            if let Some((_, ip, n, ts)) = self.order.pop_front() {
+                self.set.remove(&(ip, n, ts));
+            } else {
+                break;
+            }
+        }
+    }
+    fn seen_or_insert(&mut self, ip: Ipv4Addr, nonce: [u8; NONCE_LEN], ts: i64, now: Instant) -> bool {
+        if self.set.contains(&(ip, nonce, ts)) {
+            return true;
+        }
+        self.set.insert((ip, nonce, ts));
+        self.order.push_back((now, ip, nonce, ts));
+        false
+    }
+}
 
 #[derive(Parser, Debug)]
 #[command(name = "home-secnet-spa-pq", version)]
@@ -119,59 +164,31 @@ fn gen_keys(priv_out: PathBuf, pub_out: PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn ensure_nft_chain(table: &str, chain: &str) {
-    // Best-effort idempotent create: table, chain, and a set with timeout
-    let _ = std::process::Command::new("nft")
-        .args(["list", "table", table, "filter"])
-        .status();
-    let _ = std::process::Command::new("nft")
-        .args(["add", "table", table, "filter"])
-        .status();
-    // create user chain if missing
-    let _ = std::process::Command::new("nft")
-        .args(["list", "chain", table, "filter", chain])
-        .status();
-    let _ = std::process::Command::new("nft")
-        .args(["add", "chain", table, "filter", chain, "{", "}"])
-        .status();
-    // create set with timeout for allowed IPs
+fn ensure_nft_chain(table: &str, chain: &str) -> Result<()> {
+    // Fail-fast verification only. Systemd ExecStartPre must provision these.
     let set_name = format!("{}{}_set", "", chain);
-    let _ = std::process::Command::new("nft")
+    let ok_table = std::process::Command::new("nft")
+        .args(["list", "table", table, "filter"]) // e.g., inet filter
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+    let ok_chain = std::process::Command::new("nft")
+        .args(["list", "chain", table, "filter", chain])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+    let ok_set = std::process::Command::new("nft")
         .args(["list", "set", table, "filter", &set_name])
-        .status();
-    let _ = std::process::Command::new("nft")
-        .args([
-            "add",
-            "set",
-            table,
-            "filter",
-            &set_name,
-            "{",
-            "type",
-            "ipv4_addr;",
-            "flags",
-            "timeout;",
-            "}",
-        ])
-        .status();
-    // ensure jump rule uses set
-    let list = std::process::Command::new("nft")
-        .args(["list", "chain", table, "filter", "input"]) // assume gating in input
-        .output();
-    if let Ok(out) = list {
-        let s = String::from_utf8_lossy(&out.stdout);
-        if !s.contains(&format!("udp dport {} jump {}", "", chain))
-            && !s.contains(&format!("@{}", set_name))
-        {
-            // insert rule to accept when ip saddr @set
-            let _ = std::process::Command::new("nft")
-                .args([
-                    "insert", "rule", table, "filter", "input", "udp",
-                    "dport", // dport must be provided at run
-                ])
-                .status();
-        }
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+    if !(ok_table && ok_chain && ok_set) {
+        return Err(anyhow!(
+            "nft precondition missing: table='{} filter', chain='{}', set='{}'",
+            table, chain, set_name
+        ));
     }
+    Ok(())
 }
 
 fn add_allow_set_entry(
@@ -193,39 +210,7 @@ fn add_allow_set_entry(
     Ok(())
 }
 
-fn delete_rule_by_comment(table: &str, chain: &str, comment: &str) -> Result<()> {
-    // list chain with handles and find rule matching comment
-    let out = std::process::Command::new("nft")
-        .args(["list", "chain", table, "filter", chain, "-a"])
-        .output()
-        .context("nft list chain")?;
-    if !out.status.success() {
-        return Err(anyhow!("nft list chain failed"));
-    }
-    let s = String::from_utf8_lossy(&out.stdout);
-    let mut handle: Option<String> = None;
-    for line in s.lines() {
-        if line.contains(comment) {
-            if let Some((_, h)) = line.rsplit_once("# handle ") {
-                handle = Some(h.trim().to_string());
-                break;
-            }
-        }
-    }
-    if let Some(h) = handle {
-        let status = std::process::Command::new("nft")
-            .args(["delete", "rule", table, "filter", chain, "handle", &h])
-            .status()
-            .context("nft delete rule")?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err(anyhow!("nft delete rule failed"))
-        }
-    } else {
-        Err(anyhow!("rule handle not found for comment"))
-    }
-}
+// delete_rule_by_comment: removed; daemon does not mutate nft rules beyond adding elements
 
 #[allow(clippy::too_many_arguments)]
 fn run_daemon(
@@ -251,28 +236,32 @@ fn run_daemon(
     let sk = <kem::SecretKey as SkTrait>::from_bytes(&kem_priv_bytes)
         .map_err(|_| anyhow!("invalid KEM private key"))?;
 
-    ensure_nft_chain(&nft_table, &nft_chain);
+    ensure_nft_chain(&nft_table, &nft_chain)?;
 
-    // Maintain a small replay cache of (src_ip, nonce, ts) with TTL=window_secs
-    let mut replay_cache: VecDeque<(Ipv4Addr, [u8; 16], i64, Instant)> =
-        VecDeque::with_capacity(2048);
+    // Maintain a replay cache of (src_ip, nonce, ts) with TTL=window_secs
+    let mut replay_cache = ReplayCache::new(Duration::from_secs(window_secs as u64), 4096);
 
     // Simple rate limiter: per-source token bucket + global cap
     let mut buckets: HashMap<Ipv4Addr, (u32, Instant)> = HashMap::new();
     let per_src_capacity: u32 = 20;
     let mut global_tokens: u32 = 200;
     let mut last_global_refill = Instant::now();
+    const MAX_BUCKETS: usize = 8192;
 
     let mut buf = [0u8; 4096];
     loop {
         match sock.recv_from(&mut buf) {
             Ok((n, src)) => {
                 if let SocketAddr::V4(src_v4) = src {
-                    // Refill global tokens every second; reset per-source buckets
+                    // Refill global tokens every second
                     if last_global_refill.elapsed() >= Duration::from_secs(1) {
                         global_tokens = 200;
                         last_global_refill = Instant::now();
-                        buckets.clear();
+                        // Opportunistic prune to bound memory
+                        if buckets.len() > MAX_BUCKETS {
+                            let cutoff = Instant::now() - Duration::from_secs(10);
+                            buckets.retain(|_, v| v.1 >= cutoff);
+                        }
                     }
                     if global_tokens == 0 {
                         continue;
@@ -317,14 +306,14 @@ fn run_daemon(
                 }
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                // tick
+                // brief sleep to avoid busy loop
+                thread::sleep(Duration::from_millis(1));
             }
             Err(e) => return Err(anyhow!("socket error: {}", e)),
         }
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 #[allow(clippy::too_many_arguments)]
 fn handle_packet(
     pkt: &[u8],
@@ -337,14 +326,14 @@ fn handle_packet(
     nft_chain: &str,
     _wg_port: u16,
     // replay cache shared from caller
-    replay_cache: &mut VecDeque<(Ipv4Addr, [u8; 16], i64, Instant)>,
+    replay_cache: &mut ReplayCache,
 ) -> Result<()> {
     // Packet v1: u8 ver | u16 ct_len | ct | 16 nonce | i64 ts | u32 client_ip | 32 tag
-    if pkt.len() < 1 + 2 + 16 + 8 + 4 + 32 {
+    if pkt.len() < 1 + 2 + NONCE_LEN + 8 + 4 + TAG_LEN {
         return Err(anyhow!("packet too short"));
     }
     let ver = pkt[0];
-    if ver != 1 {
+    if ver != PROTO_VER {
         return Err(anyhow!("bad_ver"));
     }
     let ct_len = u16::from_be_bytes([pkt[1], pkt[2]]) as usize;
@@ -352,38 +341,20 @@ fn handle_packet(
     if pkt.len() != need {
         return Err(anyhow!("length mismatch"));
     }
-    // Validate expected Kyber768 ciphertext length
-    // Prefer crate-provided size when available; fallback to known Kyber768 size (1088)
-    let expected_ct_len = {
-        // derive via a fresh encapsulate length if needed (no heavy cost)
-        let (tmp_ct, _) = kem::encapsulate(
-            &<kem::PublicKey as PkTrait>::from_bytes(
-                // minimal fake pubkey to compute size would be invalid; instead, fallback to constant
-                // so we keep the constant for now
-                &[],
-            )
-            .unwrap_or_else(|_| return 1088),
-        );
-        CtTrait::as_bytes(&tmp_ct).len()
-    };
-    let expected_ct_len = if expected_ct_len == 0 {
-        1088
-    } else {
-        expected_ct_len
-    };
-    if ct_len != expected_ct_len {
+    // Enforce Kyber768 ciphertext length strictly
+    if ct_len != CT_LEN_KYBER768 {
         return Err(anyhow!("bad_ct_len"));
     }
     let mut off = 3;
     let ct = &pkt[off..off + ct_len];
     off += ct_len;
-    let nonce = &pkt[off..off + 16];
-    off += 16;
+    let nonce = &pkt[off..off + NONCE_LEN];
+    off += NONCE_LEN;
     let ts = i64::from_be_bytes(pkt[off..off + 8].try_into().unwrap());
     off += 8;
     let ip_raw = u32::from_be_bytes(pkt[off..off + 4].try_into().unwrap());
     off += 4;
-    let tag = &pkt[off..off + 32];
+    let tag = &pkt[off..off + TAG_LEN];
 
     // time window check
     let now = now_unix();
@@ -392,23 +363,11 @@ fn handle_packet(
     }
     // Replay protection: reject duplicate (src_ip, nonce, ts) within window
     let src_ip = *src.ip();
-    // purge expired entries
-    let ttl = Duration::from_secs(window_secs as u64);
     let now_instant = Instant::now();
-    while let Some((_, _, _, t)) = replay_cache.front() {
-        if now_instant.duration_since(*t) > ttl {
-            replay_cache.pop_front();
-        } else {
-            break;
-        }
-    }
-    // check duplicate
-    let mut nonce_arr = [0u8; 16];
+    replay_cache.purge_expired(now_instant);
+    let mut nonce_arr = [0u8; NONCE_LEN];
     nonce_arr.copy_from_slice(nonce);
-    if replay_cache
-        .iter()
-        .any(|(ip, n, ts_seen, _)| *ip == src_ip && *n == nonce_arr && *ts_seen == ts)
-    {
+    if replay_cache.seen_or_insert(src_ip, nonce_arr, ts, now_instant) {
         return Err(anyhow!("replay"));
     }
 
@@ -418,25 +377,15 @@ fn handle_packet(
     let shared = kem::decapsulate(&ct_obj, sk);
     let key = SsTrait::as_bytes(&shared);
 
-    // message = PSK || nonce || ts (drop client_ip from HMAC input)
-    let mut msg = Vec::with_capacity(32 + 16 + 8);
-    msg.extend_from_slice(psk);
-    msg.extend_from_slice(nonce);
-    msg.extend_from_slice(&ts.to_be_bytes());
-
-    // HMAC
+    // HMAC: constant-time verify over PSK || nonce || ts
     let mut mac = HmacSha256::new_from_slice(key).map_err(|_| anyhow!("hmac_key"))?;
-    mac.update(&msg);
-    let expected = mac.finalize().into_bytes();
-    if expected.as_slice() != tag {
-        return Err(anyhow!("bad_hmac"));
-    }
+    mac.update(psk);
+    mac.update(nonce);
+    mac.update(&ts.to_be_bytes());
+    mac.verify_slice(tag).map_err(|_| anyhow!("bad_hmac"))?;
 
     // insert allow set element for src ip with timeout
     add_allow_set_entry(nft_table, nft_chain, src_ip, open_secs)?;
-
-    // push into replay cache
-    replay_cache.push_back((src_ip, nonce_arr, ts, now_instant));
 
     // log allow
     let line = LogLine {
@@ -491,17 +440,15 @@ mod tests {
         let key = [7u8; 32];
         let psk = [1u8; 32];
         let nonce = [2u8; 16];
-        let ip = 0x7f000001u32; // 127.0.0.1
         let ts: i64 = 123456789;
         let mut msg = Vec::new();
         msg.extend_from_slice(&psk);
         msg.extend_from_slice(&nonce);
-        msg.extend_from_slice(&ip.to_be_bytes());
         msg.extend_from_slice(&ts.to_be_bytes());
         let mut mac = HmacSha256::new_from_slice(&key).unwrap();
         mac.update(&msg);
         let tag = mac.finalize().into_bytes();
-        assert_eq!(tag.len(), 32);
+        assert_eq!(tag.len(), TAG_LEN);
     }
 
     #[test]
@@ -513,17 +460,15 @@ mod tests {
 
     #[test]
     fn replay_cache_rejects_duplicate() {
-        let mut cache: VecDeque<(Ipv4Addr, [u8; 16], i64, Instant)> = VecDeque::new();
+        let mut cache = ReplayCache::new(Duration::from_secs(30), 8);
         let ip = Ipv4Addr::new(1, 2, 3, 4);
         let nonce = [7u8; 16];
         let ts = 1111i64;
         let now = Instant::now();
-        cache.push_back((ip, nonce, ts, now));
-        // simulate our duplicate detection logic
-        let dup = cache
-            .iter()
-            .any(|(i, n, t, _)| *i == ip && *n == nonce && *t == ts);
-        assert!(dup, "expected duplicate found");
+        // first insert should not be seen
+        assert_eq!(cache.seen_or_insert(ip, nonce, ts, now), false);
+        // second time should be seen (duplicate)
+        assert_eq!(cache.seen_or_insert(ip, nonce, ts, now), true);
     }
 
     #[test]

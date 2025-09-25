@@ -1,5 +1,6 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
+.PHONY: all spa router checks clean help
 
 help:
 	@echo "Targets: all | router | checks | clean"

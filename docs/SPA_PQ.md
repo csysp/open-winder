@@ -18,7 +18,7 @@ Packet Format
 - ts: i64 (unix seconds, BE)
 - client_ip_v4: u32 (network order)
 - tag: [u8; 32] (HMAC-SHA256)
-- tag = HMAC(shared_key, PSK || nonce || client_ip || ts)
+- tag = HMAC(shared_key, PSK || nonce || ts)
 
 Operation
 - Daemon listens on UDP ${SPA_PQ_PORT}. On valid knock: inserts rule into chain `wg_spa_allow` in `table inet filter` and schedules removal after `OPEN_SECS`.
@@ -45,10 +45,22 @@ Logging
   {"ts":"...","client_ip":"...","decision":"allow|deny","reason":"ok|bad_hmac|stale_ts|decap_failed|...","opens_for_secs":45}
 - No secrets (keys/psk) are logged.
 
+Log Reasons
+- ok: Valid knock, IP allowed for open_secs.
+- ok_nat_mismatch: Valid knock; client_ip in packet differs from observed src (likely NAT).
+- bad_ver: Unsupported packet version.
+- bad_ct_len: Ciphertext length not equal to Kyber768 size (1088).
+- length mismatch: Total packet length inconsistent with header.
+- stale_ts: Timestamp outside configured window.
+- replay: (src_ip, nonce, ts) seen within TTL; rejected.
+- decap_failed: Ciphertext failed to decapsulate with provided KEM secret.
+- hmac_key: Internal HMAC key error.
+- bad_hmac: HMAC verification failed.
+
 Testing
 - Unit tests cover HMAC composition and time skew checks.
 - Integration tests can mock nft via a trait; current MVP schedules real nft rule add/delete.
 
 Notes
-- NAT may rewrite source IP; the HMAC includes client_ip as sent by client. If NAT changes the IP, the daemon still binds the allow to the observed src ip.
+- NAT may rewrite source IP; the daemon always binds the allow to the observed source IP. client_ip is carried in the packet for diagnostics only and is NOT included in HMAC.
 - Ensure system clock is roughly correct on both sides (NTP recommended).

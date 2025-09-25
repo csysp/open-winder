@@ -59,7 +59,7 @@ fn main() -> Result<()> {
 
     let sock = UdpSocket::bind("0.0.0.0:0")?;
     sock.connect(dst)?;
-    // derive local IPv4
+    // derive local IPv4 (still included in packet, not in HMAC)
     let local = sock.local_addr()?;
     let local_v4 = match local {
         SocketAddr::V4(v4) => v4,
@@ -78,11 +78,10 @@ fn main() -> Result<()> {
     let ct_bytes = <kem::Ciphertext as CtTrait>::as_bytes(&ct);
     let key = <kem::SharedSecret as SsTrait>::as_bytes(&shared);
 
-    // HMAC over PSK || nonce || client_ip || ts
-    let mut msg = Vec::with_capacity(32 + 16 + 4 + 8);
+    // HMAC over PSK || nonce || ts (client_ip is NOT included)
+    let mut msg = Vec::with_capacity(32 + 16 + 8);
     msg.extend_from_slice(&psk);
     msg.extend_from_slice(&nonce);
-    msg.extend_from_slice(&client_ip_u32.to_be_bytes());
     msg.extend_from_slice(&ts.to_be_bytes());
     let mut mac = HmacSha256::new_from_slice(key).map_err(|_| anyhow!("hmac key"))?;
     mac.update(&msg);
@@ -107,7 +106,7 @@ fn main() -> Result<()> {
     let mut buf = [0u8; 16];
     match sock.recv(&mut buf) {
         Ok(n) if n >= 2 && &buf[..2] == b"OK" => {
-            println!("OK, port open for {} seconds.", 45);
+            println!("OK.");
         }
         _ => {
             println!("Knock sent. If valid, port should open shortly.");
