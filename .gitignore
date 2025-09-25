@@ -1,9 +1,9 @@
 # Ignore environment and rendered artifacts for home-secnet
 home-secnet/.env
 home-secnet/render/
-home-secnet/clients/
-!home-secnet/clients/spa-pq-client/
-!home-secnet/clients/spa-pq-client/**
+home-secnet/clients/**/*.conf
+home-secnet/clients/**/*client.json
+home-secnet/clients/**/target/
 home-secnet/router/configs/env-vars.sh
 home-secnet/render/wg/
 
