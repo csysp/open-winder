@@ -13,5 +13,15 @@ Quick links
 - Make targets: `home-secnet/Makefile`
  - PQ SPA: `docs/SPA_PQ.md`
 
+CI & Quality Gates
+- Rust server and client crates: fmt, clippy (-D warnings), build, and tests on every push/PR.
+- Shell scripts: linted with shellcheck (non-fatal until fully clean).
+- Secrets scanning: Gitleaks runs on working tree and full git history.
+- Debug workflow: on-demand build with debuginfo for server/client artifacts.
+
+Manually run scans/builds
+- Secrets: GitHub Actions → Secrets Scan → Run workflow.
+- Debug: GitHub Actions → Debug → Run workflow (select target).
+
 Notes
 - These scripts are intended to run on a Proxmox host for provisioning and configuration.
