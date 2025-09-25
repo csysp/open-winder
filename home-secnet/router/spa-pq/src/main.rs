@@ -265,6 +265,7 @@ fn run_daemon(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 fn handle_packet(
     pkt: &[u8],
     src: SocketAddrV4,
@@ -274,6 +275,7 @@ fn handle_packet(
     open_secs: u64,
     nft_table: &str,
     nft_chain: &str,
+    _wg_port: u16,
 ) -> Result<()> {
     // Packet: u16 ct_len | ct | 16 nonce | i64 ts | u32 client_ip | 32 tag
     if pkt.len() < 2 + 16 + 8 + 4 + 32 {
