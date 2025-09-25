@@ -74,8 +74,9 @@ fn main() -> Result<()> {
 
     // encapsulate
     let (ct, shared) = kem::encapsulate(&pk);
-    let ct_bytes = CtTrait::as_bytes(&ct);
-    let key = SsTrait::as_bytes(&shared);
+    // Types: ct: kem::Ciphertext, shared: kem::SharedSecret
+    let ct_bytes = <kem::Ciphertext as CtTrait>::as_bytes(&ct);
+    let key = <kem::SharedSecret as SsTrait>::as_bytes(&shared);
 
     // HMAC over PSK || nonce || client_ip || ts
     let mut msg = Vec::with_capacity(32 + 16 + 4 + 8);
