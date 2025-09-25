@@ -13,7 +13,9 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use pqcrypto_mlkem::mlkem768 as kem;
-use pqcrypto_traits::kem::{Ciphertext as CtTrait, SecretKey as SkTrait, SharedSecret as SsTrait};
+use pqcrypto_traits::kem::{
+    Ciphertext as CtTrait, PublicKey as PkTrait, SecretKey as SkTrait, SharedSecret as SsTrait,
+};
 use thiserror::Error;
 
 type HmacSha256 = Hmac<Sha256>;
