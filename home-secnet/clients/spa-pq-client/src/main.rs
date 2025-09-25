@@ -72,9 +72,8 @@ fn main() -> Result<()> {
     getrandom::getrandom(&mut nonce).map_err(|e| anyhow!(e))?;
     let ts = now_unix();
 
-    // encapsulate
-    let (ct, shared) = kem::encapsulate(&pk);
-    // Types: ct: kem::Ciphertext, shared: kem::SharedSecret
+    // encapsulate (crate returns (SharedSecret, Ciphertext))
+    let (shared, ct) = kem::encapsulate(&pk);
     let ct_bytes = <kem::Ciphertext as CtTrait>::as_bytes(&ct);
     let key = <kem::SharedSecret as SsTrait>::as_bytes(&shared);
 
