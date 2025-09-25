@@ -1,7 +1,7 @@
 SPA: Post-Quantum KEM + HMAC
 
 Overview
-- Control-plane SPA daemon gates WireGuard UDP by inserting a temporary nftables rule after a valid PQ knock.
+- PQ-KEM SPA is the default SPA mode in Winder. The control-plane SPA daemon gates WireGuard UDP by inserting a temporary nftables allow rule after a valid post-quantum knock.
 - Uses ML-KEM/Kyber-768 for key agreement and HMAC-SHA256 for authentication over a short-lived window.
 - Data plane (WireGuard/Hysteria2) remains unchanged.
 
@@ -21,7 +21,7 @@ Packet Format
 - tag = HMAC(shared_key, PSK || nonce || client_ip || ts)
 
 Operation
-- Daemon listens on UDP ${SPA_PQ_PORT}. On valid knock: inserts rule into chain `wg_spa_allow` in `inet filter` and schedules removal after `OPEN_SECS`.
+- Daemon listens on UDP ${SPA_PQ_PORT}. On valid knock: inserts rule into chain `wg_spa_allow` in `table inet filter` and schedules removal after `OPEN_SECS`.
 - Nftables: input chain contains `udp dport ${WG_PORT} jump wg_spa_allow`; default DROP remains.
 - Client reads JSON config, performs Kyber encapsulation + HMAC, sends single UDP knock, prints OK if acknowledged.
 
@@ -31,13 +31,13 @@ Setup
    - SPA_MODE=pqkem
    - SPA_PQ_PORT=62201 (default)
    - SPA_PQ_OPEN_SECS=45, SPA_PQ_WINDOW_SECS=30
-2. Build tools: `make spa` (optional locally; router will build if needed).
+2. Build tools: `make spa` (optional locally; the router will build if needed).
 3. Render + apply: `make router`.
-4. After deploy, copy `/etc/spa/kem_pub.bin` base64 into `clients/spa-pq-client.json` if not filled.
+4. After deploy, if `kem_pub_b64` is not yet filled in `clients/spa-pq-client.json`, read `/etc/spa/kem_pub.bin` on the router and base64-encode it locally into the JSON.
 
 Client Usage
 - Edit `clients/spa-pq-client.json` with `router_host` and verify `kem_pub_b64`/`psk_b64`.
-- Run: `cargo run --release --bin spa-pq-client -- --config clients/spa-pq-client.json` (or run the built binary).
+- Run: `cargo run --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --release -- --config clients/spa-pq-client.json` (or run the built binary).
 - If valid, expect: `OK, port open for N seconds.`
 
 Logging
@@ -52,4 +52,3 @@ Testing
 Notes
 - NAT may rewrite source IP; the HMAC includes client_ip as sent by client. If NAT changes the IP, the daemon still binds the allow to the observed src ip.
 - Ensure system clock is roughly correct on both sides (NTP recommended).
-

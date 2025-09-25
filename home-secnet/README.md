@@ -1,6 +1,6 @@
-home-secnet
+Winder (Router System)
 
-Turn‑key automation for a Proxmox‑based, zero‑trust, WireGuard‑first home network. It provisions an Ubuntu Router VM with nftables, WireGuard, AdGuard Home or Unbound, ISC DHCP, Suricata (inline), and traffic shaping; per‑VLAN DHCP with deny‑by‑default east‑west; and a Proxmox UI reachable only over WireGuard.
+Winder provides turn‑key automation for a Proxmox‑based, zero‑trust, WireGuard‑first home network. It provisions an Ubuntu Router VM with nftables, WireGuard, PQ‑KEM SPA control‑plane (default), AdGuard Home or Unbound, ISC DHCP, Suricata (inline), and traffic shaping; per‑VLAN DHCP with deny‑by‑default east‑west; and a Proxmox UI reachable only over WireGuard.
 
 Quick Start (Runbook)
 - Preflight (tools & distro check): `bash scripts/preflight.sh`
@@ -18,9 +18,10 @@ Quick Start (Runbook)
 - Migrate to flat LAN (optional): `bash scripts/migrate_to_flat_lan.sh`
 
 Make Targets
-- `make all`: Runs the end‑to‑end flow above.
+- `make all`: Runs the end-to-end flow above.
 - `make router`: Bridges, image, router VM, render, push.
 - `make checks`: Runs the basic verifiers.
+- `make spa`: Builds PQ‑KEM SPA server and client crates.
 
 Assumptions & Prereqs
 - Proxmox VE installed on a small host. A second NIC is strongly recommended (USB 3.0 gigabit works well) to separate WAN and LAN.
@@ -37,9 +38,9 @@ WireGuard Access
 - Router config is applied to `/etc/wireguard/wg0.conf`.
 - A sample client is created at `clients/wg-client1.conf`; set `Endpoint = <YOUR_PUB_IP>:${WG_PORT}` before use.
 - Optional QUIC wrapper: set `WRAP_MODE=hysteria2` to run Hysteria2 on UDP `${WRAP_LISTEN_PORT}` and forward to WireGuard. A sample `clients/hysteria2-client.yaml` is generated.
-- Optional SPA (Single Packet Authorization): set `SPA_ENABLE=true` to require an SPA knock before the WireGuard port is allowed. Uses separate encryption and HMAC keys for enhanced security. Client configuration is generated in `clients/spa-client.conf`.
+- SPA (Single Packet Authorization): set `SPA_ENABLE=true` to gate WireGuard. Default mode is `SPA_MODE=pqkem` (post‑quantum KEM + HMAC). Legacy fwknop mode is available when `SPA_MODE` is not `pqkem`.
 
-Double‑Hop Egress (Optional)
+Double-Hop Egress (Optional)
 - Enable with `DOUBLE_HOP_ENABLE=true` and fill `WG2_*` in `.env`. This creates `/etc/wireguard/wg1.conf` on the router and policy routes WG client traffic out via the remote exit node. Configure the exit node to accept `${WG2_ADDRESS}` and allow forwarding/NAT.
 
 DNS Options
@@ -80,3 +81,8 @@ Migration
   - Run `bash scripts/migrate_to_flat_lan.sh` on the Proxmox host to update bridges, remove VM NIC VLAN tags, regenerate configs, and push to the Router VM. Router configs are backed up before replacement.
   - The Router VM LAN interface remains `${ROUTER_LAN_IF}` with IP `${GW_TRUSTED}`; VLAN subinterfaces are removed by netplan.
   - DHCP will listen only on `${ROUTER_LAN_IF}`.
+SPA (PQ‑KEM) Summary
+- Default SPA mode: `pqkem` using ML‑KEM/Kyber‑768 and HMAC‑SHA256.
+- Daemon: `home-secnet/router/spa-pq` runs on the router, listening on `SPA_PQ_PORT`, inserting ephemeral allow rules into nftables chain `wg_spa_allow` for `OPEN_SECS`.
+- Client: Rust tool under `home-secnet/clients/spa-pq-client` sends a single knock. Client config template is written to `clients/spa-pq-client.json` during render.
+- See `docs/SPA_PQ.md` for packet format, variables, and troubleshooting.

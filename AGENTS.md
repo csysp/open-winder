@@ -100,3 +100,23 @@ Style Check Shortlist (copy/paste at top of new scripts)
 - `set -euo pipefail; IFS=$'\n\t'`
 - Guard inputs; document flags; no secrets in logs; idempotent steps; atomic writes.
 
+Docs Consistency Guide
+- Defaults
+  - Refer to the router system as “Winder”. The `home-secnet/` directory name is an implementation detail.
+  - PQ‑KEM SPA (Kyber‑768 + HMAC) is the default SPA mode. Legacy fwknop remains available when `SPA_MODE` is not `pqkem`.
+- Sources of truth
+  - Top‑level overview and links: `README.md`.
+  - Runbook, scripts, env vars, and targets: `home-secnet/README.md`.
+  - SPA control‑plane details: `docs/SPA_PQ.md`.
+- When updating code, update docs in the same PR:
+  - New env vars → add to `home-secnet/.env.example` and document in `home-secnet/README.md`.
+  - New/changed scripts or Make targets → reflect in runbook steps and Make Targets section.
+  - NFTables or systemd changes → ensure chain names, flags, and unit args match in `docs/SPA_PQ.md`.
+- Paths in docs must be exact and clickable (use repo‑relative paths like `home-secnet/scripts/...`).
+- CI notes in `README.md` must reflect current workflows (fmt, clippy, shellcheck, secrets scan, debug).
+- PR checklist (copy into PR description):
+  - [ ] Updated `.env.example` and documented new variables.
+  - [ ] Updated runbook for any script/Make changes.
+  - [ ] Updated SPA docs if packet, nftables, or service args changed.
+  - [ ] Verified links and paths resolve.
+  - [ ] CI is green (fmt, clippy, build/tests, shellcheck, secrets scan).
