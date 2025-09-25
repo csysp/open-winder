@@ -257,24 +257,38 @@ fn run_daemon(
     let mut replay_cache: VecDeque<(Ipv4Addr, [u8; 16], i64, Instant)> =
         VecDeque::with_capacity(2048);
 
-    // Simple rate limiter: allow up to N decaps per second (global)
-    let mut tokens: u32 = 50; // capacity
-    let mut last_refill = Instant::now();
+    // Simple rate limiter: per-source token bucket + global cap
+    let mut buckets: HashMap<Ipv4Addr, (u32, Instant)> = HashMap::new();
+    let per_src_capacity: u32 = 20;
+    let mut global_tokens: u32 = 200;
+    let mut last_global_refill = Instant::now();
 
     let mut buf = [0u8; 4096];
     loop {
         match sock.recv_from(&mut buf) {
             Ok((n, src)) => {
                 if let SocketAddr::V4(src_v4) = src {
-                    // Refill tokens every second
-                    if last_refill.elapsed() >= Duration::from_secs(1) {
-                        tokens = 50;
-                        last_refill = Instant::now();
+                    // Refill global tokens every second; reset per-source buckets
+                    if last_global_refill.elapsed() >= Duration::from_secs(1) {
+                        global_tokens = 200;
+                        last_global_refill = Instant::now();
+                        buckets.clear();
                     }
-                    if tokens == 0 {
-                        continue; // drop (rate limited)
+                    if global_tokens == 0 {
+                        continue;
                     }
-                    tokens -= 1;
+                    global_tokens -= 1;
+                    let entry = buckets
+                        .entry(*src_v4.ip())
+                        .or_insert((per_src_capacity, Instant::now()));
+                    if entry.1.elapsed() >= Duration::from_secs(1) {
+                        entry.0 = per_src_capacity;
+                        entry.1 = Instant::now();
+                    }
+                    if entry.0 == 0 {
+                        continue;
+                    }
+                    entry.0 -= 1;
                     let res = handle_packet(
                         &buf[..n],
                         src_v4,
@@ -325,12 +339,16 @@ fn handle_packet(
     // replay cache shared from caller
     replay_cache: &mut VecDeque<(Ipv4Addr, [u8; 16], i64, Instant)>,
 ) -> Result<()> {
-    // Packet: u16 ct_len | ct | 16 nonce | i64 ts | u32 client_ip | 32 tag
-    if pkt.len() < 2 + 16 + 8 + 4 + 32 {
+    // Packet v1: u8 ver | u16 ct_len | ct | 16 nonce | i64 ts | u32 client_ip | 32 tag
+    if pkt.len() < 1 + 2 + 16 + 8 + 4 + 32 {
         return Err(anyhow!("packet too short"));
     }
-    let ct_len = u16::from_be_bytes([pkt[0], pkt[1]]) as usize;
-    let need = 2 + ct_len + 16 + 8 + 4 + 32;
+    let ver = pkt[0];
+    if ver != 1 {
+        return Err(anyhow!("bad_ver"));
+    }
+    let ct_len = u16::from_be_bytes([pkt[1], pkt[2]]) as usize;
+    let need = 1 + 2 + ct_len + 16 + 8 + 4 + 32;
     if pkt.len() != need {
         return Err(anyhow!("length mismatch"));
     }
@@ -339,7 +357,7 @@ fn handle_packet(
     if ct_len != KYBER768_CT_LEN {
         return Err(anyhow!("bad_ct_len"));
     }
-    let mut off = 2;
+    let mut off = 3;
     let ct = &pkt[off..off + ct_len];
     off += ct_len;
     let nonce = &pkt[off..off + 16];

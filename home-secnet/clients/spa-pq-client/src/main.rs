@@ -88,12 +88,13 @@ fn main() -> Result<()> {
     mac.update(&msg);
     let tag = mac.finalize().into_bytes();
 
-    // packet: u16 ct_len | ct | nonce(16) | ts(i64) | client_ip(u32) | tag(32)
+    // packet v1: u8 ver(1) | u16 ct_len | ct | nonce(16) | ts(i64) | client_ip(u32) | tag(32)
     let ct_len = ct_bytes.len();
     if ct_len > u16::MAX as usize {
         return Err(anyhow!("ct too large"));
     }
-    let mut pkt = Vec::with_capacity(2 + ct_len + 16 + 8 + 4 + 32);
+    let mut pkt = Vec::with_capacity(1 + 2 + ct_len + 16 + 8 + 4 + 32);
+    pkt.push(1u8);
     pkt.extend_from_slice(&(ct_len as u16).to_be_bytes());
     pkt.extend_from_slice(ct_bytes);
     pkt.extend_from_slice(&nonce);

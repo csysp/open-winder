@@ -2,8 +2,12 @@
 Description=Home-SecNet PQ-KEM SPA Daemon
 After=network-online.target nftables.service
 Wants=network-online.target nftables.service
+ConditionPathExists=/usr/sbin/nft
 
 [Service]
+ExecStartPre=/usr/sbin/nft list table inet filter || /usr/sbin/nft add table inet filter
+ExecStartPre=/usr/sbin/nft list chain inet filter wg_spa_allow || /usr/sbin/nft add chain inet filter wg_spa_allow '{ }'
+ExecStartPre=/usr/sbin/nft list set inet filter wg_spa_allow_set || /usr/sbin/nft add set inet filter wg_spa_allow_set { type ipv4_addr; flags timeout; }
 ExecStart=/usr/local/bin/home-secnet-spa-pq run \
   --listen 0.0.0.0:${SPA_PQ_PORT} \
   --wg-port ${WG_PORT} \
