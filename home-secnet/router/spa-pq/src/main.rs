@@ -202,7 +202,7 @@ fn delete_rule_by_comment(table: &str, chain: &str, comment: &str) -> Result<()>
 #[allow(clippy::too_many_arguments)]
 fn run_daemon(
     listen: String,
-    _wg_port: u16,
+    wg_port: u16,
     kem_priv: PathBuf,
     psk_file: PathBuf,
     open_secs: u64,
