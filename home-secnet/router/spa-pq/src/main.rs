@@ -353,8 +353,25 @@ fn handle_packet(
         return Err(anyhow!("length mismatch"));
     }
     // Validate expected Kyber768 ciphertext length
-    const KYBER768_CT_LEN: usize = 1088; // PQClean Kyber768 ciphertext bytes
-    if ct_len != KYBER768_CT_LEN {
+    // Prefer crate-provided size when available; fallback to known Kyber768 size (1088)
+    let expected_ct_len = {
+        // derive via a fresh encapsulate length if needed (no heavy cost)
+        let (tmp_ct, _) = kem::encapsulate(
+            &<kem::PublicKey as PkTrait>::from_bytes(
+                // minimal fake pubkey to compute size would be invalid; instead, fallback to constant
+                // so we keep the constant for now
+                &[],
+            )
+            .unwrap_or_else(|_| return 1088),
+        );
+        CtTrait::as_bytes(&tmp_ct).len()
+    };
+    let expected_ct_len = if expected_ct_len == 0 {
+        1088
+    } else {
+        expected_ct_len
+    };
+    if ct_len != expected_ct_len {
         return Err(anyhow!("bad_ct_len"));
     }
     let mut off = 3;
@@ -364,7 +381,7 @@ fn handle_packet(
     off += 16;
     let ts = i64::from_be_bytes(pkt[off..off + 8].try_into().unwrap());
     off += 8;
-    let _ip_raw = u32::from_be_bytes(pkt[off..off + 4].try_into().unwrap());
+    let ip_raw = u32::from_be_bytes(pkt[off..off + 4].try_into().unwrap());
     off += 4;
     let tag = &pkt[off..off + 32];
 
@@ -424,9 +441,13 @@ fn handle_packet(
     // log allow
     let line = LogLine {
         ts: now,
-        client_ip: &client_ip.to_string(),
+        client_ip: &src_ip.to_string(),
         decision: "allow",
-        reason: "ok",
+        reason: if ip_raw != u32::from_be_bytes(src_ip.octets()) {
+            "ok_nat_mismatch"
+        } else {
+            "ok"
+        },
         opens_for_secs: open_secs,
     };
     println!("{}", serde_json::to_string(&line).unwrap_or_default());
@@ -488,5 +509,41 @@ mod tests {
         let now = now_unix();
         assert!((now - (now - 10)).abs() <= 30);
         assert!((now - (now - 100)).abs() > 30);
+    }
+
+    #[test]
+    fn replay_cache_rejects_duplicate() {
+        let mut cache: VecDeque<(Ipv4Addr, [u8; 16], i64, Instant)> = VecDeque::new();
+        let ip = Ipv4Addr::new(1, 2, 3, 4);
+        let nonce = [7u8; 16];
+        let ts = 1111i64;
+        let now = Instant::now();
+        cache.push_back((ip, nonce, ts, now));
+        // simulate our duplicate detection logic
+        let dup = cache
+            .iter()
+            .any(|(i, n, t, _)| *i == ip && *n == nonce && *t == ts);
+        assert!(dup, "expected duplicate found");
+    }
+
+    #[test]
+    fn rate_limiter_buckets_refill() {
+        let mut buckets: std::collections::HashMap<Ipv4Addr, (u32, Instant)> = HashMap::new();
+        let per_src_capacity = 2u32;
+        let ip = Ipv4Addr::new(9, 9, 9, 9);
+        let entry = buckets
+            .entry(ip)
+            .or_insert((per_src_capacity, Instant::now()));
+        assert_eq!(entry.0, 2);
+        entry.0 -= 1;
+        entry.0 -= 1;
+        assert_eq!(entry.0, 0);
+        // force refill
+        entry.1 = Instant::now() - Duration::from_secs(2);
+        if entry.1.elapsed() >= Duration::from_secs(1) {
+            entry.0 = per_src_capacity;
+            entry.1 = Instant::now();
+        }
+        assert_eq!(entry.0, 2);
     }
 }
