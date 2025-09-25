@@ -2,7 +2,7 @@
 set -euo pipefail; IFS=$'\n\t'
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"; [[ -f "$LIB_PATH" ]] && source "$LIB_PATH"
 
-echo "[08] Rendering router configs from .env and generating keys..."
+log_info "[08] Rendering router configs from .env and generating keys..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Export env vars so templating tools (envsubst/perl) can see them
 set -a

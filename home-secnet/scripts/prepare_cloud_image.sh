@@ -2,7 +2,7 @@
 set -euo pipefail; IFS=$'\n\t'
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"; [[ -f "$LIB_PATH" ]] && source "$LIB_PATH"
 
-echo "[05] Fetching Ubuntu 24.04 cloud image and creating template..."
+log_info "[05] Fetching Ubuntu 24.04 cloud image and creating template..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/.env"
 

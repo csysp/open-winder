@@ -78,13 +78,12 @@ fn main() -> Result<()> {
     let ct_bytes = <kem::Ciphertext as CtTrait>::as_bytes(&ct);
     let key = <kem::SharedSecret as SsTrait>::as_bytes(&shared);
 
-    // HMAC over PSK || nonce || ts (client_ip is NOT included)
-    let mut msg = Vec::with_capacity(32 + 16 + 8);
-    msg.extend_from_slice(&psk);
-    msg.extend_from_slice(&nonce);
-    msg.extend_from_slice(&ts.to_be_bytes());
+    // HMAC over PSK || ver || nonce || ts (client_ip is NOT included)
     let mut mac = HmacSha256::new_from_slice(key).map_err(|_| anyhow!("hmac key"))?;
-    mac.update(&msg);
+    mac.update(&psk);
+    mac.update(&[1u8]);
+    mac.update(&nonce);
+    mac.update(&ts.to_be_bytes());
     let tag = mac.finalize().into_bytes();
 
     // packet v1: u8 ver(1) | u16 ct_len | ct | nonce(16) | ts(i64) | client_ip(u32) | tag(32)

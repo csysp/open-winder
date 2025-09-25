@@ -2,7 +2,7 @@
 set -euo pipefail; IFS=$'\n\t'
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"; [[ -f "$LIB_PATH" ]] && source "$LIB_PATH"
 
-echo "[11] Setting up daily updates and security scans (host + VMs)..."
+log_info "[11] Setting up daily updates and security scans (host + VMs)..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/.env"
 

@@ -14,6 +14,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use pqcrypto_mlkem::mlkem768 as kem;
 use pqcrypto_traits::kem::{Ciphertext as CtTrait, SecretKey as SkTrait, SharedSecret as SsTrait};
+use thiserror::Error;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -183,10 +184,7 @@ fn ensure_nft_chain(table: &str, chain: &str) -> Result<()> {
         .map(|s| s.success())
         .unwrap_or(false);
     if !(ok_table && ok_chain && ok_set) {
-        return Err(anyhow!(
-            "nft precondition missing: table='{} filter', chain='{}', set='{}'",
-            table, chain, set_name
-        ));
+        return Err(SpaError::NftMissing.into());
     }
     Ok(())
 }
@@ -296,7 +294,7 @@ fn run_daemon(
                             ts: now_unix(),
                             client_ip: &src_v4.ip().to_string(),
                             decision: "deny",
-                            reason: &format!("{}", e),
+                            reason: reason_of(&e),
                             opens_for_secs: 0,
                         };
                         println!("{}", serde_json::to_string(&line).unwrap_or_default());
@@ -330,20 +328,20 @@ fn handle_packet(
 ) -> Result<()> {
     // Packet v1: u8 ver | u16 ct_len | ct | 16 nonce | i64 ts | u32 client_ip | 32 tag
     if pkt.len() < 1 + 2 + NONCE_LEN + 8 + 4 + TAG_LEN {
-        return Err(anyhow!("packet too short"));
+        return Err(SpaError::PacketTooShort.into());
     }
     let ver = pkt[0];
     if ver != PROTO_VER {
-        return Err(anyhow!("bad_ver"));
+        return Err(SpaError::BadVer.into());
     }
     let ct_len = u16::from_be_bytes([pkt[1], pkt[2]]) as usize;
     let need = 1 + 2 + ct_len + 16 + 8 + 4 + 32;
     if pkt.len() != need {
-        return Err(anyhow!("length mismatch"));
+        return Err(SpaError::LengthMismatch.into());
     }
     // Enforce Kyber768 ciphertext length strictly
     if ct_len != CT_LEN_KYBER768 {
-        return Err(anyhow!("bad_ct_len"));
+        return Err(SpaError::BadCtLen.into());
     }
     let mut off = 3;
     let ct = &pkt[off..off + ct_len];
@@ -359,7 +357,7 @@ fn handle_packet(
     // time window check
     let now = now_unix();
     if (now - ts).abs() > window_secs {
-        return Err(anyhow!("stale_ts"));
+        return Err(SpaError::StaleTs.into());
     }
     // Replay protection: reject duplicate (src_ip, nonce, ts) within window
     let src_ip = *src.ip();
@@ -368,21 +366,22 @@ fn handle_packet(
     let mut nonce_arr = [0u8; NONCE_LEN];
     nonce_arr.copy_from_slice(nonce);
     if replay_cache.seen_or_insert(src_ip, nonce_arr, ts, now_instant) {
-        return Err(anyhow!("replay"));
+        return Err(SpaError::Replay.into());
     }
 
     // decapsulate
     let ct_obj =
-        <kem::Ciphertext as CtTrait>::from_bytes(ct).map_err(|_| anyhow!("decap_failed"))?;
+        <kem::Ciphertext as CtTrait>::from_bytes(ct).map_err(|_| SpaError::DecapFailed)?;
     let shared = kem::decapsulate(&ct_obj, sk);
     let key = SsTrait::as_bytes(&shared);
 
     // HMAC: constant-time verify over PSK || nonce || ts
-    let mut mac = HmacSha256::new_from_slice(key).map_err(|_| anyhow!("hmac_key"))?;
+    let mut mac = HmacSha256::new_from_slice(key).map_err(|_| SpaError::HmacKey)?;
     mac.update(psk);
+    mac.update(&[PROTO_VER]);
     mac.update(nonce);
     mac.update(&ts.to_be_bytes());
-    mac.verify_slice(tag).map_err(|_| anyhow!("bad_hmac"))?;
+    mac.verify_slice(tag).map_err(|_| SpaError::BadHmac)?;
 
     // insert allow set element for src ip with timeout
     add_allow_set_entry(nft_table, nft_chain, src_ip, open_secs)?;
@@ -441,12 +440,11 @@ mod tests {
         let psk = [1u8; 32];
         let nonce = [2u8; 16];
         let ts: i64 = 123456789;
-        let mut msg = Vec::new();
-        msg.extend_from_slice(&psk);
-        msg.extend_from_slice(&nonce);
-        msg.extend_from_slice(&ts.to_be_bytes());
         let mut mac = HmacSha256::new_from_slice(&key).unwrap();
-        mac.update(&msg);
+        mac.update(&psk);
+        mac.update(&[PROTO_VER]);
+        mac.update(&nonce);
+        mac.update(&ts.to_be_bytes());
         let tag = mac.finalize().into_bytes();
         assert_eq!(tag.len(), TAG_LEN);
     }
@@ -490,5 +488,37 @@ mod tests {
             entry.1 = Instant::now();
         }
         assert_eq!(entry.0, 2);
+    }
+}
+#[derive(Error, Debug)]
+enum SpaError {
+    #[error("packet too short")] PacketTooShort,
+    #[error("bad_ver")] BadVer,
+    #[error("length mismatch")] LengthMismatch,
+    #[error("bad_ct_len")] BadCtLen,
+    #[error("stale_ts")] StaleTs,
+    #[error("replay")] Replay,
+    #[error("decap_failed")] DecapFailed,
+    #[error("hmac_key")] HmacKey,
+    #[error("bad_hmac")] BadHmac,
+    #[error("nft_missing")] NftMissing,
+}
+
+fn reason_of(e: &anyhow::Error) -> &'static str {
+    if let Some(se) = e.downcast_ref::<SpaError>() {
+        match se {
+            SpaError::PacketTooShort => "packet too short",
+            SpaError::BadVer => "bad_ver",
+            SpaError::LengthMismatch => "length mismatch",
+            SpaError::BadCtLen => "bad_ct_len",
+            SpaError::StaleTs => "stale_ts",
+            SpaError::Replay => "replay",
+            SpaError::DecapFailed => "decap_failed",
+            SpaError::HmacKey => "hmac_key",
+            SpaError::BadHmac => "bad_hmac",
+            SpaError::NftMissing => "nft_missing",
+        }
+    } else {
+        "error"
     }
 }

@@ -2,7 +2,7 @@
 set -euo pipefail; IFS=$'\n\t'
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"; [[ -f "$LIB_PATH" ]] && source "$LIB_PATH"
 
-echo "[13] Migrating to flat LAN (no VLANs) and hardening updates..."
+log_info "[13] Migrating to flat LAN (no VLANs) and hardening updates..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=./lib/env.sh
 source "$ROOT_DIR/scripts/lib/env.sh"

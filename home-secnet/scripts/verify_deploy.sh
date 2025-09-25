@@ -2,7 +2,7 @@
 set -euo pipefail; IFS=$'\n\t'
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"; [[ -f "$LIB_PATH" ]] && source "$LIB_PATH"
 
-echo "[12] Running post checks..."
+log_info "[12] Running post checks..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/.env"
 

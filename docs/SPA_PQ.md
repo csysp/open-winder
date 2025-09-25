@@ -18,7 +18,7 @@ Packet Format
 - ts: i64 (unix seconds, BE)
 - client_ip_v4: u32 (network order)
 - tag: [u8; 32] (HMAC-SHA256)
-- tag = HMAC(shared_key, PSK || nonce || ts)
+- tag = HMAC(shared_key, PSK || ver || nonce || ts)
 
 Operation
 - Daemon listens on UDP ${SPA_PQ_PORT}. On valid knock: inserts rule into chain `wg_spa_allow` in `table inet filter` and schedules removal after `OPEN_SECS`.
@@ -56,6 +56,26 @@ Log Reasons
 - decap_failed: Ciphertext failed to decapsulate with provided KEM secret.
 - hmac_key: Internal HMAC key error.
 - bad_hmac: HMAC verification failed.
+
+Operational Checks
+- nftables: confirm table/chain/set exist before starting the daemon:
+  - `nft list table inet filter`
+  - `nft list chain inet filter wg_spa_allow`
+  - `nft list set inet filter wg_spa_allow_set`
+- Time sync: ensure NTP is running on router and clients.
+- SPA port: verify the UDP port is listening: `ss -ulnp | grep :$SPA_PQ_PORT`
+- Logs: journalctl -u winder-spa-pq -o cat | jq '.'
+
+Systemd Install Flow (Template)
+1. Copy sources to router host: `/opt/router/spa-pq-src`
+2. Build and install binary:
+   - `home-secnet/router/systemd/spa-pq/install-spa-pq.sh`
+3. Prepare `/etc/spa/` secrets and permissions:
+   - `/etc/spa/kem_priv.bin` (0600), `/etc/spa/kem_pub.bin` (0644), PSK file (0600)
+4. Ensure nftables objects exist (ExecStartPre in unit handles this by default)
+5. Render unit from template and enable:
+   - `envsubst < home-secnet/router/systemd/spa-pq/spa-pq.service.template | sudo tee /etc/systemd/system/winder-spa-pq.service`
+   - `sudo systemctl daemon-reload && sudo systemctl enable --now winder-spa-pq`
 
 Testing
 - Unit tests cover HMAC composition and time skew checks.
