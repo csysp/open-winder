@@ -1,9 +1,12 @@
 #![forbid(unsafe_code)]
 
 use anyhow::{anyhow, Context, Result};
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine;
 use clap::Parser;
 use hmac::{Hmac, Mac};
 use pqcrypto_mlkem::mlkem768 as kem;
+use pqcrypto_traits::kem::{Ciphertext as CtTrait, PublicKey as PkTrait, SharedSecret as SsTrait};
 use sha2::Sha256;
 use std::fs;
 use std::net::{SocketAddr, ToSocketAddrs, UdpSocket};
@@ -42,12 +45,13 @@ fn main() -> Result<()> {
         .with_context(|| format!("read {}", cli.config.display()))?;
     let cfg: Config = serde_json::from_str(&cfg_data)?;
 
-    let pub_bytes = base64::decode(cfg.kem_pub_b64.trim())?;
-    let psk = base64::decode(cfg.psk_b64.trim())?;
+    let pub_bytes = STANDARD.decode(cfg.kem_pub_b64.trim())?;
+    let psk = STANDARD.decode(cfg.psk_b64.trim())?;
     if psk.len() != 32 {
         return Err(anyhow!("psk must be 32 bytes"));
     }
-    let pk = kem::PublicKey::from_bytes(&pub_bytes).map_err(|_| anyhow!("bad pubkey"))?;
+    let pk =
+        <kem::PublicKey as PkTrait>::from_bytes(&pub_bytes).map_err(|_| anyhow!("bad pubkey"))?;
 
     let addr = format!("{}:{}", cfg.router_host, cfg.spa_port);
     let mut addrs = addr.to_socket_addrs()?;
@@ -65,13 +69,13 @@ fn main() -> Result<()> {
 
     // build fields
     let mut nonce = [0u8; 16];
-    getrandom::getrandom(&mut nonce)?;
+    getrandom::getrandom(&mut nonce).map_err(|e| anyhow!(e))?;
     let ts = now_unix();
 
     // encapsulate
     let (ct, shared) = kem::encapsulate(&pk);
-    let key = shared.as_bytes();
-    let ct_bytes = ct.as_bytes();
+    let ct_bytes = CtTrait::as_bytes(&ct);
+    let key = SsTrait::as_bytes(&shared);
 
     // HMAC over PSK || nonce || client_ip || ts
     let mut msg = Vec::with_capacity(32 + 16 + 4 + 8);
