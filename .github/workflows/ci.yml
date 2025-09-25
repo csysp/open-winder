@@ -27,25 +27,12 @@ jobs:
           cargo clippy --all-targets -- -D warnings
           cargo build --release
           cargo test --all --release
-      - name: Show workspace tree (debug)
-        run: |
-          pwd
-          ls -la
-          ls -la home-secnet || true
-          ls -la home-secnet/clients || true
-          find . -maxdepth 3 -type d -name 'spa-pq-client' -print || true
-          test -f home-secnet/router/spa-pq/Cargo.toml && echo "server manifest OK" || echo "server manifest MISSING"
-          test -f home-secnet/clients/spa-pq-client/Cargo.toml && echo "client manifest OK" || echo "client manifest MISSING"
       - name: Build client (manifest-path)
         run: |
-          if [ -f home-secnet/clients/spa-pq-client/Cargo.toml ]; then
-            cargo fmt --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --all -- --check
-            cargo clippy --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --all-targets -- -D warnings
-            cargo build --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --release
-            cargo test --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --all --release || true
-          else
-            echo "Client crate manifest not found; skipping client build.";
-          fi
+          cargo fmt --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --all -- --check
+          cargo clippy --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --all-targets -- -D warnings
+          cargo build --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --release
+          cargo test --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --all --release || true
 
   shell:
     name: Shell lint
