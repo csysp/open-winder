@@ -1,0 +1,40 @@
+name: Debug
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Which component to build (server|client|all)'
+        required: false
+        default: 'all'
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Env snapshot
+        run: |
+          echo "Runner: $(uname -a)"; rustc -V; cargo -V
+      - name: Build server (debug)
+        if: ${{ github.event.inputs.target == 'server' || github.event.inputs.target == 'all' || github.event.inputs.target == '' }}
+        working-directory: home-secnet/router/spa-pq
+        run: |
+          cargo build -Z unstable-options --config "build.rustflags=['-C','debuginfo=2']"
+      - name: Build client (debug)
+        if: ${{ github.event.inputs.target == 'client' || github.event.inputs.target == 'all' || github.event.inputs.target == '' }}
+        working-directory: home-secnet/clients/spa-pq-client
+        run: |
+          cargo build -Z unstable-options --config "build.rustflags=['-C','debuginfo=2']"
+      - name: Archive debug artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-artifacts
+          path: |
+            home-secnet/router/spa-pq/target/debug/
+            home-secnet/clients/spa-pq-client/target/debug/
+
