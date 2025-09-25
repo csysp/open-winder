@@ -476,9 +476,9 @@ mod tests {
         let ts = 1111i64;
         let now = Instant::now();
         // first insert should not be seen
-        assert_eq!(cache.seen_or_insert(ip, nonce, ts, now), false);
+        assert!(!cache.seen_or_insert(ip, nonce, ts, now));
         // second time should be seen (duplicate)
-        assert_eq!(cache.seen_or_insert(ip, nonce, ts, now), true);
+        assert!(cache.seen_or_insert(ip, nonce, ts, now));
     }
 
     #[test]
