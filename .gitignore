@@ -2,6 +2,8 @@
 home-secnet/.env
 home-secnet/render/
 home-secnet/clients/
+!home-secnet/clients/spa-pq-client/
+!home-secnet/clients/spa-pq-client/**
 home-secnet/router/configs/env-vars.sh
 home-secnet/render/wg/
 
