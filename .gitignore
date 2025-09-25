@@ -5,6 +5,11 @@ home-secnet/clients/
 home-secnet/router/configs/env-vars.sh
 home-secnet/render/wg/
 
+# Rust build artifacts
+target/
+home-secnet/router/spa-pq/target/
+home-secnet/clients/spa-pq-client/target/
+
 # Logs and backups
 **/*.log
 **/*.bak-*
@@ -12,4 +17,3 @@ home-secnet/render/wg/
 # OS files
 .DS_Store
 Thumbs.db
-

@@ -18,6 +18,7 @@ packages:
   - suricata
   - ifupdown2
   - iproute2
+  - fwknop-server
 runcmd:
   - [ sysctl, -w, net.ipv4.ip_forward=1 ]
   - [ systemctl, enable, --now, nftables ]

@@ -11,6 +11,7 @@ Quick links
 - Docs: `home-secnet/README.md`
 - Env template: `home-secnet/.env.example`
 - Make targets: `home-secnet/Makefile`
+ - PQ SPA: `docs/SPA_PQ.md`
 
 Notes
 - These scripts are intended to run on a Proxmox host for provisioning and configuration.

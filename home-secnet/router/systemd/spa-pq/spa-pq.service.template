@@ -1,0 +1,27 @@
+[Unit]
+Description=Home-SecNet PQ-KEM SPA Daemon
+After=network-online.target nftables.service
+Wants=network-online.target nftables.service
+
+[Service]
+ExecStart=/usr/local/bin/home-secnet-spa-pq run \
+  --listen 0.0.0.0:${SPA_PQ_PORT} \
+  --wg-port ${WG_PORT} \
+  --kem-priv /etc/spa/kem_priv.bin \
+  --psk-file ${SPA_PQ_PSK_FILE} \
+  --open-secs ${SPA_PQ_OPEN_SECS} \
+  --window-secs ${SPA_PQ_WINDOW_SECS} \
+  --nft-table inet \
+  --nft-chain wg_spa_allow
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+Restart=on-failure
+RestartSec=1s
+
+[Install]
+WantedBy=multi-user.target
+

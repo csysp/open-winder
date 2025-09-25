@@ -48,22 +48,26 @@ export WG_SERVER_IP=${WG_SERVER_IP}
 export WG_ALLOWED_IPS="${WG_ALLOWED_IPS}"
 export WG_PERSISTENT_KEEPALIVE=${WG_PERSISTENT_KEEPALIVE}
 export WG_DNS=${WG_DNS}
-export VLAN_TRUSTED=${VLAN_TRUSTED}
-export VLAN_IOT=${VLAN_IOT}
-export VLAN_GUEST=${VLAN_GUEST}
-export VLAN_LAB=${VLAN_LAB}
+# VLAN variables (only export if USE_VLANS=true)
+if [[ "${USE_VLANS:-false}" == "true" ]]; then
+  export VLAN_TRUSTED=${VLAN_TRUSTED}
+  export VLAN_IOT=${VLAN_IOT}
+  export VLAN_GUEST=${VLAN_GUEST}
+  export VLAN_LAB=${VLAN_LAB}
+  export NET_IOT=${NET_IOT}
+  export NET_GUEST=${NET_GUEST}
+  export NET_LAB=${NET_LAB}
+  export GW_IOT=${GW_IOT}
+  export GW_GUEST=${GW_GUEST}
+  export GW_LAB=${GW_LAB}
+  export DHCP_IOT_RANGE="${DHCP_IOT_RANGE}"
+  export DHCP_GUEST_RANGE="${DHCP_GUEST_RANGE}"
+  export DHCP_LAB_RANGE="${DHCP_LAB_RANGE}"
+fi
+# Common variables (always exported)
 export NET_TRUSTED=${NET_TRUSTED}
-export NET_IOT=${NET_IOT}
-export NET_GUEST=${NET_GUEST}
-export NET_LAB=${NET_LAB}
 export GW_TRUSTED=${GW_TRUSTED}
-export GW_IOT=${GW_IOT}
-export GW_GUEST=${GW_GUEST}
-export GW_LAB=${GW_LAB}
 export DHCP_TRUSTED_RANGE="${DHCP_TRUSTED_RANGE}"
-export DHCP_IOT_RANGE="${DHCP_IOT_RANGE}"
-export DHCP_GUEST_RANGE="${DHCP_GUEST_RANGE}"
-export DHCP_LAB_RANGE="${DHCP_LAB_RANGE}"
 export DNS_RECURSORS="${DNS_RECURSORS}"
 export ROUTER_WAN_IF=${ROUTER_WAN_IF}
 export ROUTER_LAN_IF=${ROUTER_LAN_IF}
@@ -186,19 +190,117 @@ EOF
 fi
 
 # SPA configs
+# SPA configs
 if [[ "${SPA_ENABLE:-false}" == "true" ]]; then
-  # Generate key if empty
-  if [[ -z "${SPA_KEY:-}" ]]; then
-    SPA_KEY=$(head -c 32 /dev/urandom | base64)
-    # Persist key
-    if grep -q '^SPA_KEY=' "$ROOT_DIR/.env"; then
-      awk -v k="SPA_KEY" -v v="$SPA_KEY" 'BEGIN{FS=OFS="="} $1==k {$0=k"="v} {print}' "$ROOT_DIR/.env" > "$ROOT_DIR/.env.tmp" && mv "$ROOT_DIR/.env.tmp" "$ROOT_DIR/.env"
-    else
-      echo "SPA_KEY=$SPA_KEY" >> "$ROOT_DIR/.env"
+  if [[ "${SPA_MODE:-legacy}" == "pqkem" ]]; then
+    echo "[08] SPA mode: PQ-KEM (Kyber + HMAC)"
+    SPAQ_DIR="$ROOT_DIR/render/spa/pq"
+    mkdir -p "$SPAQ_DIR" "$ROOT_DIR/render/router/systemd"
+    # Generate PSK if missing
+    if [[ ! -f "$SPAQ_DIR/psk.bin" ]]; then
+      umask 077
+      head -c 32 /dev/urandom > "$SPAQ_DIR/psk.bin"
     fi
+    # Generate Kyber keypair using local built tool if available
+    SPA_BIN="$ROOT_DIR/router/spa-pq/target/release/home-secnet-spa-pq"
+    if [[ -x "$SPA_BIN" ]]; then
+      if [[ ! -f "$SPAQ_DIR/kem_priv.bin" || ! -f "$SPAQ_DIR/kem_pub.bin" ]]; then
+        "$SPA_BIN" gen-keys --priv-out "$SPAQ_DIR/kem_priv.bin" --pub-out "$SPAQ_DIR/kem_pub.bin"
+      fi
+    else
+      echo "[08] WARNING: spa-pq binary not found at $SPA_BIN. Run 'make spa' to build locally. Deferring keypair generation to apply step."
+    fi
+    # Prepare client JSON
+    PSK_B64=$(base64 -w0 < "$SPAQ_DIR/psk.bin" 2>/dev/null || base64 < "$SPAQ_DIR/psk.bin")
+    if [[ -f "$SPAQ_DIR/kem_pub.bin" ]]; then
+      PUB_B64=$(base64 -w0 < "$SPAQ_DIR/kem_pub.bin" 2>/dev/null || base64 < "$SPAQ_DIR/kem_pub.bin")
+    else
+      PUB_B64="TO_BE_FILLED_AFTER_DEPLOY"
+    fi
+    cat > "$ROOT_DIR/clients/spa-pq-client.json" <<EOF
+{
+  "router_host": "<YOUR_PUB_IP>",
+  "spa_port": ${SPA_PQ_PORT:-62201},
+  "wg_port": ${WG_PORT},
+  "kem_pub_b64": "${PUB_B64}",
+  "psk_b64": "${PSK_B64}"
+}
+EOF
+    # Render systemd unit with ExecStart args
+    cat > "$ROOT_DIR/render/router/systemd/spa-pq.service" <<EOF
+[Unit]
+Description=Home-SecNet PQ-KEM SPA Daemon
+After=network-online.target nftables.service
+Wants=network-online.target nftables.service
+
+[Service]
+ExecStart=/usr/local/bin/home-secnet-spa-pq run \
+  --listen 0.0.0.0:${SPA_PQ_PORT:-62201} \
+  --wg-port ${WG_PORT} \
+  --kem-priv /etc/spa/kem_priv.bin \
+  --psk-file ${SPA_PQ_PSK_FILE:-/etc/spa/psk.bin} \
+  --open-secs ${SPA_PQ_OPEN_SECS:-45} \
+  --window-secs ${SPA_PQ_WINDOW_SECS:-30} \
+  --nft-table inet \
+  --nft-chain wg_spa_allow
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+Restart=on-failure
+RestartSec=1s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    echo "[08] PQ-KEM SPA artifacts prepared under render/spa/pq and render/router/systemd/."
+  else
+    # Legacy SPA via fwknop
+    # Generate separate keys for encryption and HMAC if not set
+    SPA_DIR="$ROOT_DIR/render/spa"
+    mkdir -p "$SPA_DIR"
+    
+    if [[ -z "${SPA_KEY:-}" ]]; then
+      SPA_KEY=$(head -c 32 /dev/urandom | base64)
+      # Persist key
+      if grep -q '^SPA_KEY=' "$ROOT_DIR/.env"; then
+        awk -v k="SPA_KEY" -v v="$SPA_KEY" 'BEGIN{FS=OFS="="} $1==k {$0=k"="v} {print}' "$ROOT_DIR/.env" > "$ROOT_DIR/.env.tmp" && mv "$ROOT_DIR/.env.tmp" "$ROOT_DIR/.env"
+      else
+        echo "SPA_KEY=$SPA_KEY" >> "$ROOT_DIR/.env"
+      fi
+    fi
+    
+    if [[ -z "${SPA_HMAC_KEY:-}" ]]; then
+      SPA_HMAC_KEY=$(head -c 32 /dev/urandom | base64)
+      # Persist HMAC key
+      if grep -q '^SPA_HMAC_KEY=' "$ROOT_DIR/.env"; then
+        awk -v k="SPA_HMAC_KEY" -v v="$SPA_HMAC_KEY" 'BEGIN{FS=OFS="="} $1==k {$0=k"="v} {print}' "$ROOT_DIR/.env" > "$ROOT_DIR/.env.tmp" && mv "$ROOT_DIR/.env.tmp" "$ROOT_DIR/.env"
+      else
+        echo "SPA_HMAC_KEY=$SPA_HMAC_KEY" >> "$ROOT_DIR/.env"
+      fi
+    fi
+    
+    export SPA_HMAC_KEY
+    render "$ROOT_DIR/router/configs/fwknopd.conf" "$ROOT_DIR/render/router/configs/fwknopd.conf"
+    render "$ROOT_DIR/router/configs/access.conf" "$ROOT_DIR/render/router/configs/access.conf"
+    
+    # Generate SPA client configuration
+    cat > "$ROOT_DIR/clients/spa-client.conf" <<EOF
+# SPA Client Configuration (fwknop)
+# Use with: fwknop -A tcp/22 -D <server_ip> -s -k <key> -a <hmac_key> -n <name>
+SPA_SERVER_IP=<YOUR_PUB_IP>
+SPA_SERVER_PORT=${SPA_PORT}
+SPA_KEY=${SPA_KEY}
+SPA_HMAC_KEY=${SPA_HMAC_KEY}
+SPA_TIMEOUT=${SPA_TIMEOUT}
+
+# Example command:
+# fwknop -A tcp/${WG_PORT} -D \${SPA_SERVER_IP} -s -k \${SPA_KEY} -a \${SPA_HMAC_KEY} -n home-secnet
+EOF
+    echo "[08] SPA (fwknop) enabled. Client config saved to clients/spa-client.conf"
   fi
-  render "$ROOT_DIR/router/configs/fwknopd.conf" "$ROOT_DIR/render/router/configs/fwknopd.conf"
-  render "$ROOT_DIR/router/configs/access.conf" "$ROOT_DIR/render/router/configs/access.conf"
 fi
 
 # Optional: double-hop wg1 to exit node

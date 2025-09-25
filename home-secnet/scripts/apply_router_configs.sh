@@ -26,6 +26,15 @@ rsync -av --delete "$ROOT_DIR/render/router/configs/" ${RUSER}@${ROUTER_IP}:/opt
 rsync -av "$ROOT_DIR/router/systemd/" ${RUSER}@${ROUTER_IP}:/opt/router/systemd/
 rsync -av "$ROOT_DIR/router/hardening/" ${RUSER}@${ROUTER_IP}:/opt/router/hardening/
 rsync -av "$ROOT_DIR/router/cloudinit/" ${RUSER}@${ROUTER_IP}:/opt/router/cloudinit/
+if [[ -d "$ROOT_DIR/render/spa/pq" ]]; then
+  rsync -av "$ROOT_DIR/render/spa/pq/" ${RUSER}@${ROUTER_IP}:/opt/router/spa-pq/
+fi
+if [[ -d "$ROOT_DIR/router/spa-pq" ]]; then
+  rsync -av "$ROOT_DIR/router/spa-pq/" ${RUSER}@${ROUTER_IP}:/opt/router/spa-pq-src/
+fi
+if [[ -d "$ROOT_DIR/render/router/systemd" ]]; then
+  rsync -av "$ROOT_DIR/render/router/systemd/" ${RUSER}@${ROUTER_IP}:/opt/router/systemd/rendered/
+fi
 
 ssh ${RUSER}@${ROUTER_IP} "USE_VLANS='${USE_VLANS}' ROUTER_LAN_IF='${ROUTER_LAN_IF}' VLAN_TRUSTED='${VLAN_TRUSTED}' VLAN_IOT='${VLAN_IOT}' VLAN_GUEST='${VLAN_GUEST}' VLAN_LAB='${VLAN_LAB}' DISABLE_USB_STORAGE='${DISABLE_USB_STORAGE}' HARDEN_AUDITD='${HARDEN_AUDITD}' INSTALL_AIDE='${INSTALL_AIDE}' FAIL2BAN_ENABLE='${FAIL2BAN_ENABLE}' ADGUARD_VERSION='${ADGUARD_VERSION}' HYSTERIA_VERSION='latest' bash -s" <<'EOSSH'
 set -euo pipefail
@@ -131,13 +140,58 @@ if [[ -f /etc/hysteria/config.yaml ]]; then
 fi
 
 # Configure SPA gating if enabled (only when access.conf is present)
-if [[ -f /opt/router/access.conf ]]; then
-  sudo install -m 0755 /opt/router/systemd/fwknop/fwknop-add.sh /opt/router/fwknop-add.sh
-  sudo apt-get update -y && sudo apt-get install -y fwknop-server || true
-  sudo mkdir -p /etc/fwknopd
-  sudo cp /opt/router/fwknopd.conf /etc/fwknopd/fwknopd.conf
-  sudo cp /opt/router/access.conf /etc/fwknopd/access.conf
-  sudo systemctl enable --now fwknopd
+if [[ "${SPA_ENABLE}" == "true" ]]; then
+  if [[ "${SPA_MODE:-legacy}" == "pqkem" ]]; then
+    echo "[router] Configuring PQ-KEM SPA daemon"
+    # Ensure nftables table/chain as a safety net (nftables.conf should already include these)
+    sudo nft list table inet filter >/dev/null 2>&1 || sudo nft add table inet filter || true
+    # Create chain if missing
+    sudo nft list chain inet filter wg_spa_allow >/dev/null 2>&1 || sudo nft add chain inet filter wg_spa_allow '{ }' || true
+    # Ensure jump rule exists in input chain (idempotent)
+    if ! sudo nft list chain inet filter input | grep -q "udp dport ${WG_PORT} jump wg_spa_allow"; then
+      sudo nft insert rule inet filter input udp dport ${WG_PORT} jump wg_spa_allow
+    fi
+    # Install toolchain and build server from source
+    sudo apt-get update -y && sudo apt-get install -y rustc cargo pkg-config build-essential
+    if [[ -d /opt/router/spa-pq-src ]]; then
+      (cd /opt/router/spa-pq-src && cargo build --release)
+      sudo install -m 0755 /opt/router/spa-pq-src/target/release/home-secnet-spa-pq /usr/local/bin/home-secnet-spa-pq
+    fi
+    # Install secrets
+    sudo mkdir -p /etc/spa
+    if [[ -f /opt/router/spa-pq/psk.bin ]]; then
+      sudo install -m 0600 /opt/router/spa-pq/psk.bin /etc/spa/psk.bin
+    fi
+    if [[ -f /opt/router/spa-pq/kem_priv.bin && -f /opt/router/spa-pq/kem_pub.bin ]]; then
+      sudo install -m 0600 /opt/router/spa-pq/kem_priv.bin /etc/spa/kem_priv.bin
+      sudo install -m 0644 /opt/router/spa-pq/kem_pub.bin /etc/spa/kem_pub.bin
+    else
+      # Generate on router if not provided
+      if command -v /usr/local/bin/home-secnet-spa-pq >/dev/null 2>&1; then
+        sudo /usr/local/bin/home-secnet-spa-pq gen-keys --priv-out /etc/spa/kem_priv.bin --pub-out /etc/spa/kem_pub.bin
+      fi
+    fi
+    # Install systemd unit
+    if [[ -f /opt/router/systemd/rendered/spa-pq.service ]]; then
+      sudo cp /opt/router/systemd/rendered/spa-pq.service /etc/systemd/system/spa-pq.service
+    else
+      sudo cp /opt/router/systemd/spa-pq/spa-pq.service.template /etc/systemd/system/spa-pq.service
+      # Replace placeholders via envsubst-like bash here-doc if needed
+      sudo bash -lc "sed -i -e 's/\${SPA_PQ_PORT}/${SPA_PQ_PORT}/g' -e 's/\${WG_PORT}/${WG_PORT}/g' -e 's#\${SPA_PQ_PSK_FILE}#${SPA_PQ_PSK_FILE}#g' -e 's/\${SPA_PQ_OPEN_SECS}/${SPA_PQ_OPEN_SECS}/g' -e 's/\${SPA_PQ_WINDOW_SECS}/${SPA_PQ_WINDOW_SECS}/g' /etc/systemd/system/spa-pq.service"
+    fi
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now spa-pq.service
+    # Ensure fwknopd is stopped if previously installed
+    sudo systemctl disable --now fwknopd 2>/dev/null || true
+  elif [[ -f /opt/router/access.conf ]]; then
+    # legacy fwknop mode
+    sudo install -m 0755 /opt/router/systemd/fwknop/fwknop-add.sh /opt/router/fwknop-add.sh
+    sudo apt-get update -y && sudo apt-get install -y fwknop-server || true
+    sudo mkdir -p /etc/fwknopd
+    sudo cp /opt/router/fwknopd.conf /etc/fwknopd/fwknopd.conf
+    sudo cp /opt/router/access.conf /etc/fwknopd/access.conf
+    sudo systemctl enable --now fwknopd
+  fi
 fi
 
 sudo netplan apply || true

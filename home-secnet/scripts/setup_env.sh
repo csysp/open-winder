@@ -33,6 +33,15 @@ ensure_choice SPA_ENABLE "Enable Single Packet Authorization?" "false" "true,fal
 if [[ "$SPA_ENABLE" == "true" ]]; then
   ensure_env SPA_PORT "SPA knock port" "62201" '^[0-9]{2,5}$'
   ensure_env SPA_TIMEOUT "SPA access timeout (seconds)" "30" '^[0-9]+$'
+  # Keys are auto-generated during render if not set
+  
+  # Validate SPA port doesn't conflict with other services
+  if [[ "$SPA_PORT" == "$WG_PORT" ]]; then
+    echo "[env] WARNING: SPA port ($SPA_PORT) conflicts with WireGuard port. Consider using a different port."
+  fi
+  if [[ "$SPA_PORT" == "22" || "$SPA_PORT" == "53" || "$SPA_PORT" == "67" || "$SPA_PORT" == "68" ]]; then
+    echo "[env] WARNING: SPA port ($SPA_PORT) conflicts with common services. Consider using a different port."
+  fi
 fi
 
 # WireGuard basics
