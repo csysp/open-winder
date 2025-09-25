@@ -199,9 +199,10 @@ fn delete_rule_by_comment(table: &str, chain: &str, comment: &str) -> Result<()>
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_daemon(
     listen: String,
-    wg_port: u16,
+    _wg_port: u16,
     kem_priv: PathBuf,
     psk_file: PathBuf,
     open_secs: u64,
@@ -263,6 +264,7 @@ fn run_daemon(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn handle_packet(
     pkt: &[u8],
     src: SocketAddrV4,
@@ -272,7 +274,6 @@ fn handle_packet(
     open_secs: u64,
     nft_table: &str,
     nft_chain: &str,
-    wg_port: u16,
 ) -> Result<()> {
     // Packet: u16 ct_len | ct | 16 nonce | i64 ts | u32 client_ip | 32 tag
     if pkt.len() < 2 + 16 + 8 + 4 + 32 {
@@ -399,6 +400,6 @@ mod tests {
     fn time_window_check() {
         let now = now_unix();
         assert!((now - (now - 10)).abs() <= 30);
-        assert!(!((now - (now - 100)).abs() <= 30));
+        assert!((now - (now - 100)).abs() > 30);
     }
 }
