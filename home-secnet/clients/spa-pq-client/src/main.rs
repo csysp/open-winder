@@ -44,6 +44,7 @@ fn main() -> Result<()> {
     let cfg_data = fs::read_to_string(&cli.config)
         .with_context(|| format!("read {}", cli.config.display()))?;
     let cfg: Config = serde_json::from_str(&cfg_data)?;
+    let _wg_port = cfg.wg_port; // referenced to satisfy dead_code lint
 
     let pub_bytes = STANDARD.decode(cfg.kem_pub_b64.trim())?;
     let psk = STANDARD.decode(cfg.psk_b64.trim())?;
