@@ -20,4 +20,6 @@ if [[ -n "${ROUTER_ADMIN_USER:-}" ]]; then
     echo "AllowUsers ${ROUTER_ADMIN_USER}" | sudo tee -a "$CFG" >/dev/null
   fi
 fi
-sudo systemctl reload ssh || sudo systemctl reload sshd || true
+if ! sudo systemctl reload ssh; then
+  sudo systemctl reload sshd || { echo "[sshd] reload failed" >&2; exit 1; }
+fi

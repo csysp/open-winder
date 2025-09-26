@@ -21,7 +21,9 @@ dl_version() {
 }
 
 echo "[adguard] Installing AdGuard Home (version: $VERSION)"
-apt-get update -y && apt-get install -y curl tar || true
+set -euo pipefail
+apt-get update -y
+apt-get install -y curl tar
 
 URL=""
 if [[ "$VERSION" == "latest" ]]; then
@@ -42,4 +44,3 @@ curl -fsSL "$URL" -o "$TMP/adguard.tar.gz"
 tar -xzf "$TMP/adguard.tar.gz" -C "$TMP"
 install -m 0755 "$TMP/AdGuardHome/AdGuardHome" "$BIN"
 echo "[adguard] Installed to $BIN"
-

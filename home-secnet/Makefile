@@ -17,7 +17,7 @@ all: spa
 	bash scripts/render_router_configs.sh
 	bash scripts/apply_router_configs.sh
 	bash scripts/apply_node_firewall.sh
-	bash scripts/setup_security_maintenance.sh || true
+	bash scripts/setup_security_maintenance.sh
 	bash scripts/verify_deploy.sh
 
 spa:

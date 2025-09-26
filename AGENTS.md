@@ -54,6 +54,7 @@ Bash Scripting Style
   - Make scripts safe to re-run. Check existence before creating, use declarative configs, and avoid destructive defaults.
   - When destructive actions are needed, add explicit prompts or `--yes` flags.
   - Avoid global state resets. For nftables, prefer dedicated tables/chains over `flush ruleset`. Persist includes for reboot.
+  - Do not mask failures with `|| true`. Handle non-fatal cases explicitly (guards + `log_warn`), and fail fast (`die`) on critical paths so issues surface and can be fixed promptly.
 - Networking & SSH
   - Use `ssh`/`scp` with non-interactive, secure defaults; avoid leaking host keys and credentials. Prefer `-o StrictHostKeyChecking=accept-new` for first connections.
   - For remote execution, capture and propagate exit codes.

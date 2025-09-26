@@ -281,7 +281,9 @@ if [[ "${FAIL2BAN_ENABLE}" == "true" ]]; then
 # Ultralight-specific applies
 if [[ -f /etc/nftables.d/ultralight.nft ]]; then
   # Create table if missing, then load our chains/sets without flushing global ruleset
-  sudo nft list tables | grep -q 'inet winder_ultralight' || sudo nft add table inet winder_ultralight || true
+  if ! sudo nft list tables | grep -q 'inet winder_ultralight'; then
+    sudo nft add table inet winder_ultralight || { echo "[09] failed to add nft table winder_ultralight" >&2; exit 1; }
+  fi
   sudo nft -f /etc/nftables.d/ultralight.nft || echo "[09] applying ultralight nftables failed" >&2
   # Load bogons set elements if present
   if [[ -f /etc/nftables.d/bogons.nft ]]; then
@@ -290,10 +292,10 @@ if [[ -f /etc/nftables.d/ultralight.nft ]]; then
   # Ensure persistence via /etc/nftables.conf include
   if [[ -f /etc/nftables.conf ]]; then
     if ! grep -q '^include "/etc/nftables.d/ultralight.nft"' /etc/nftables.conf; then
-      echo 'include "/etc/nftables.d/ultralight.nft"' | sudo tee -a /etc/nftables.conf >/dev/null || true
+      echo 'include "/etc/nftables.d/ultralight.nft"' | sudo tee -a /etc/nftables.conf >/dev/null || { echo "[09] failed to persist ultralight include" >&2; exit 1; }
     fi
     if [[ -f /etc/nftables.d/bogons.nft ]] && ! grep -q '^include "/etc/nftables.d/bogons.nft"' /etc/nftables.conf; then
-      echo 'include "/etc/nftables.d/bogons.nft"' | sudo tee -a /etc/nftables.conf >/dev/null || true
+      echo 'include "/etc/nftables.d/bogons.nft"' | sudo tee -a /etc/nftables.conf >/dev/null || { echo "[09] failed to persist bogons include" >&2; exit 1; }
     fi
   fi
   sudo systemctl enable --now nftables || echo "[09] enabling nftables failed" >&2
@@ -329,21 +331,21 @@ fi
 if [[ -d /opt/router/render/opt/spa ]]; then
   echo "[09] Found pre-staged SPA artifacts; verifying token and hashes..."
   sudo mkdir -p /opt/spa
-  sudo install -m 0755 /opt/router/render/opt/spa/home-secnet-spa-pq /usr/local/bin/home-secnet-spa-pq 2>/dev/null || true
-  sudo install -m 0755 /opt/router/render/opt/spa/home-secnet-spa-pq-client /usr/local/bin/home-secnet-spa-pq-client 2>/dev/null || true
-  sudo install -m 0644 /opt/router/render/opt/spa/token.json /opt/spa/token.json 2>/dev/null || true
-  sudo install -m 0644 /opt/router/render/opt/spa/token.sig /opt/spa/token.sig 2>/dev/null || true
-  sudo install -m 0644 /opt/router/render/opt/spa/pubkey.gpg /opt/spa/pubkey.gpg 2>/dev/null || true
-  sudo install -m 0644 /opt/router/render/opt/spa/cosign.pub /opt/spa/cosign.pub 2>/dev/null || true
-  sudo install -m 0644 /opt/router/render/opt/spa/cosign.bundle /opt/spa/cosign.bundle 2>/dev/null || true
+  [[ -f /opt/router/render/opt/spa/home-secnet-spa-pq ]] && sudo install -m 0755 /opt/router/render/opt/spa/home-secnet-spa-pq /usr/local/bin/home-secnet-spa-pq
+  [[ -f /opt/router/render/opt/spa/home-secnet-spa-pq-client ]] && sudo install -m 0755 /opt/router/render/opt/spa/home-secnet-spa-pq-client /usr/local/bin/home-secnet-spa-pq-client
+  [[ -f /opt/router/render/opt/spa/token.json ]] && sudo install -m 0644 /opt/router/render/opt/spa/token.json /opt/spa/token.json
+  [[ -f /opt/router/render/opt/spa/token.sig ]] && sudo install -m 0644 /opt/router/render/opt/spa/token.sig /opt/spa/token.sig
+  [[ -f /opt/router/render/opt/spa/pubkey.gpg ]] && sudo install -m 0644 /opt/router/render/opt/spa/pubkey.gpg /opt/spa/pubkey.gpg
+  [[ -f /opt/router/render/opt/spa/cosign.pub ]] && sudo install -m 0644 /opt/router/render/opt/spa/cosign.pub /opt/spa/cosign.pub
+  [[ -f /opt/router/render/opt/spa/cosign.bundle ]] && sudo install -m 0644 /opt/router/render/opt/spa/cosign.bundle /opt/spa/cosign.bundle
 
   verify_ok=1
   if [[ -f /opt/spa/token.json ]]; then
-    if [[ -f /opt/spa/token.sig && -f /opt/spa/pubkey.gpg && -x "$(command -v gpg || true)" ]]; then
-      gpg --import /opt/spa/pubkey.gpg >/dev/null 2>&1 || true
-      if gpg --verify /opt/spa/token.sig /opt/spa/token.json >/dev/null 2>&1; then verify_ok=0; else echo "[09] GPG verify failed" >&2; fi
-    elif [[ -f /opt/spa/token.sig && -f /opt/spa/cosign.pub && -x "$(command -v cosign || true)" ]]; then
-      if COSIGN_EXPERIMENTAL=1 cosign verify-blob --key /opt/spa/cosign.pub --signature /opt/spa/token.sig /opt/spa/token.json >/dev/null 2>&1; then verify_ok=0; else echo "[09] cosign verify failed" >&2; fi
+    if [[ -f /opt/spa/token.sig && -f /opt/spa/pubkey.gpg ]] && command -v gpg >/dev/null 2>&1; then
+      gpg --import /opt/spa/pubkey.gpg >/dev/null 2>&1 || { echo "[09] GPG import failed" >&2; exit 1; }
+      if gpg --verify /opt/spa/token.sig /opt/spa/token.json >/dev/null 2>&1; then verify_ok=0; else echo "[09] GPG verify failed" >&2; exit 1; fi
+    elif [[ -f /opt/spa/token.sig && -f /opt/spa/cosign.pub ]] && command -v cosign >/dev/null 2>&1; then
+      if COSIGN_EXPERIMENTAL=1 cosign verify-blob --key /opt/spa/cosign.pub --signature /opt/spa/token.sig /opt/spa/token.json >/dev/null 2>&1; then verify_ok=0; else echo "[09] cosign verify failed" >&2; exit 1; fi
     else
       echo "[09] No signature verification material found; proceeding without signature check" >&2
       verify_ok=0
@@ -351,15 +353,15 @@ if [[ -d /opt/router/render/opt/spa ]]; then
 
     if [[ $verify_ok -eq 0 ]]; then
       # Validate SHA256s in token against staged binaries if present
-      server_sha="$(jq -r '.server.sha256 // empty' /opt/spa/token.json 2>/dev/null || true)"
-      client_sha="$(jq -r '.client.sha256 // empty' /opt/spa/token.json 2>/dev/null || true)"
+      server_sha="$(jq -r '.server.sha256 // empty' /opt/spa/token.json 2>/dev/null)"
+      client_sha="$(jq -r '.client.sha256 // empty' /opt/spa/token.json 2>/dev/null)"
       if [[ -n "$server_sha" && -x /usr/local/bin/home-secnet-spa-pq ]]; then
         calc_srv="$(sha256sum /usr/local/bin/home-secnet-spa-pq | awk '{print $1}')"
-        [[ "$calc_srv" == "$server_sha" ]] || echo "[09] server sha256 mismatch" >&2
+        [[ "$calc_srv" == "$server_sha" ]] || { echo "[09] server sha256 mismatch" >&2; exit 1; }
       fi
       if [[ -n "$client_sha" && -x /usr/local/bin/home-secnet-spa-pq-client ]]; then
         calc_cli="$(sha256sum /usr/local/bin/home-secnet-spa-pq-client | awk '{print $1}')"
-        [[ "$calc_cli" == "$client_sha" ]] || echo "[09] client sha256 mismatch" >&2
+        [[ "$calc_cli" == "$client_sha" ]] || { echo "[09] client sha256 mismatch" >&2; exit 1; }
       fi
     fi
   fi

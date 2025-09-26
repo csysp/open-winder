@@ -7,7 +7,9 @@ INSTALL_DIR="/opt/hysteria"
 BIN="${INSTALL_DIR}/hysteria"
 
 mkdir -p "$INSTALL_DIR"
-apt-get update -y && apt-get install -y curl tar || true
+set -euo pipefail
+apt-get update -y
+apt-get install -y curl tar
 
 dl_latest() {
   local api="https://api.github.com/repos/apernet/hysteria/releases/latest"
@@ -38,4 +40,3 @@ curl -fsSL "$URL" -o "$TMP/hy.tar.gz"
 tar -xzf "$TMP/hy.tar.gz" -C "$TMP"
 install -m 0755 "$TMP/hysteria" "$BIN"
 echo "[hysteria] Installed to $BIN"
-
