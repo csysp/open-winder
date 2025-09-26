@@ -18,6 +18,13 @@ USAGE
 if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
   usage; exit 0
 fi
+
+# Source .env defensively to load persisted values
+ENV_FILE="$(cd "$(dirname "$0")/.." && pwd)/.env"
+if [[ -f "$ENV_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+fi
 # shellcheck source=scripts/lib/log.sh
 # shellcheck source=home-secnet/scripts/lib/log.sh
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"

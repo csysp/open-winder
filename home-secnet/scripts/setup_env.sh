@@ -65,6 +65,20 @@ if ! grep -q '^PHYS_WAN_IF=' "$(dirname "$0")/../.env" 2>/dev/null; then
   echo "[01] Detecting NICs to prefill WAN/LAN..."
   "$(dirname "$0")/detect_nics.sh" || true
 fi
+
+# Set sane defaults for essential features on first run
+if ! grep -q '^WRAP_MODE=' "$(dirname "$0")/../.env" 2>/dev/null; then
+  echo "WRAP_MODE=hysteria2" >> "$(dirname "$0")/../.env"
+fi
+if ! grep -q '^DNS_STACK=' "$(dirname "$0")/../.env" 2>/dev/null; then
+  echo "DNS_STACK=unbound" >> "$(dirname "$0")/../.env"
+fi
+if ! grep -q '^SPA_ENABLE=' "$(dirname "$0")/../.env" 2>/dev/null; then
+  echo "SPA_ENABLE=true" >> "$(dirname "$0")/../.env"
+fi
+if ! grep -q '^DOUBLE_HOP_ENABLE=' "$(dirname "$0")/../.env" 2>/dev/null; then
+  echo "DOUBLE_HOP_ENABLE=true" >> "$(dirname "$0")/../.env"
+fi
 # shellcheck source=scripts/lib/log.sh
 # shellcheck source=home-secnet/scripts/lib/log.sh
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"
