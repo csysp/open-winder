@@ -67,7 +67,9 @@ require_nonempty() {
 
 # Load defaults early (avoid unbound vars)
 set +u
+# shellcheck disable=SC1090
 [[ -f "$ENV_EXAMPLE" ]] && source "$ENV_EXAMPLE"
+# shellcheck disable=SC1090
 [[ -f "$ENV_FILE" ]] && source "$ENV_FILE"
 set -u
 
@@ -90,6 +92,7 @@ if [[ -z "${PHYS_WAN_IF:-}" || -z "${PHYS_LAN_IF:-}" ]]; then
   "$SCRIPT_DIR/detect_nics.sh" || true
   # Reload env after detection
   set +u
+  # shellcheck disable=SC1090
   [[ -f "$ENV_FILE" ]] && source "$ENV_FILE"
   set -u
 fi
