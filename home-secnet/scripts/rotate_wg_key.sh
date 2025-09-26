@@ -2,7 +2,11 @@
 set -euo pipefail; IFS=$'\n\t'
 # shellcheck source=scripts/lib/log.sh
 # shellcheck source=home-secnet/scripts/lib/log.sh
-LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"; [[ -f "$LIB_PATH" ]] && source "$LIB_PATH"
+LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"
+if [[ -f "$LIB_PATH" ]]; then
+  # shellcheck disable=SC1090
+  source "$LIB_PATH"
+fi
 
 usage() {
   cat <<USAGE
