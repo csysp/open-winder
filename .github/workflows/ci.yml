@@ -34,6 +34,22 @@ jobs:
           cargo build --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --release
           cargo test --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --all 
 
+  audit:
+    name: Rust security audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+      - name: Audit router SPA crate
+        run: cargo audit --manifest-path home-secnet/router/spa-pq/Cargo.toml --deny warnings || true
+      - name: Audit client SPA crate
+        run: cargo audit --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --deny warnings || true
+
   release:
     name: Release SPA artifacts
     # Allow tag builds and manual/branch builds for testing
