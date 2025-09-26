@@ -427,6 +427,10 @@ fi
 mkdir -p "$(dirname "$0")/../render" "$(dirname "$0")/../render/etc" "$(dirname "$0")/../render/usr/local/sbin" "$(dirname "$0")/../render/etc/systemd/system"
 OUT_ROOT="$(cd "$(dirname "$0")/../render" && pwd)"
 
+if [[ "${ULTRALIGHT_MODE:-false}" != "true" && "${ULTRALIGHT_EXPERIMENTAL:-0}" != "1" ]]; then
+  echo "[render] Ultralight disabled (future addition)"
+fi
+
 # Derive interface names from .env if present
 ROUTER_WAN_IF_DEFAULT="wan0"
 ROUTER_LAN_IF_DEFAULT="lan0"
@@ -589,6 +593,18 @@ cat > "$OUT_ROOT/etc/logrotate.d/home-secnet" <<'EOF'
   copytruncate
 }
 EOF
+
+# stage SPA artifacts if present locally (no network)
+mkdir -p "$OUT_ROOT/opt/spa"
+if [[ -f "$SCRIPT_DIR/../router/spa-pq/target/release/home-secnet-spa-pq" ]]; then
+  cp -f "$SCRIPT_DIR/../router/spa-pq/target/release/home-secnet-spa-pq" "$OUT_ROOT/opt/spa/home-secnet-spa-pq"
+fi
+if [[ -f "$SCRIPT_DIR/../clients/spa-pq-client/target/release/home-secnet-spa-pq-client" ]]; then
+  cp -f "$SCRIPT_DIR/../clients/spa-pq-client/target/release/home-secnet-spa-pq-client" "$OUT_ROOT/opt/spa/home-secnet-spa-pq-client"
+fi
+for f in token.json token.sig pubkey.gpg cosign.pub cosign.bundle; do
+  if [[ -f "$SCRIPT_DIR/../$f" ]]; then cp -f "$SCRIPT_DIR/../$f" "$OUT_ROOT/opt/spa/$f"; fi
+done
 
 # optional ultralight health helper
 cat > "$OUT_ROOT/usr/local/sbin/ul_health.sh" <<'EOF'

@@ -98,20 +98,24 @@ if [[ -z "${PHYS_WAN_IF:-}" || -z "${PHYS_LAN_IF:-}" ]]; then
 fi
 
 echo ""
-echo "Ultralight Mode targets old/tiny x86 and Pi-class devices."
-read -r -p "Enable Ultralight Mode (disable Suricata, use dnsmasq, minimal logs)? [y/N] " _ul
-if [[ "${_ul}" =~ ^[Yy]$ ]]; then
-  export ULTRALIGHT_MODE=true
-  export IDS_MODE=none
-  export DHCP_STACK=dnsmasq
-  export DNS_STACK=unbound
-  export NFT_GUARD_ENABLE=true
-  export NFT_SYNOPROXY_ENABLE=true
-  export NFT_RATE_LIMIT_ENABLE=true
-  export NFT_BOGONS_ENABLE=true
-  export NFT_DYNAMIC_BAN_ENABLE=false
-  export SHAPING_ENABLE=true
-  export LOG_VERBOSITY=minimal
+if [[ "${ULTRALIGHT_EXPERIMENTAL:-0}" == "1" ]]; then
+  echo "Ultralight Mode targets old/tiny x86 and Pi-class devices. (EXPERIMENTAL)"
+  read -r -p "Enable Ultralight Mode (disable Suricata, use dnsmasq, minimal logs)? [y/N] " _ul
+  if [[ "${_ul}" =~ ^[Yy]$ ]]; then
+    export ULTRALIGHT_MODE=true
+    export IDS_MODE=none
+    export DHCP_STACK=dnsmasq
+    export DNS_STACK=unbound
+    export NFT_GUARD_ENABLE=true
+    export NFT_SYNOPROXY_ENABLE=true
+    export NFT_RATE_LIMIT_ENABLE=true
+    export NFT_BOGONS_ENABLE=true
+    export NFT_DYNAMIC_BAN_ENABLE=false
+    export SHAPING_ENABLE=true
+    export LOG_VERBOSITY=minimal
+  else
+    export ULTRALIGHT_MODE=false
+  fi
 else
   export ULTRALIGHT_MODE=false
 fi

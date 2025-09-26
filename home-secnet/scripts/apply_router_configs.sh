@@ -299,6 +299,10 @@ if [[ -f /etc/nftables.d/ultralight.nft ]]; then
   sudo systemctl enable --now nftables || echo "[09] enabling nftables failed" >&2
 fi
 
+if [[ "${ULTRALIGHT_MODE:-false}" != "true" && "${ULTRALIGHT_EXPERIMENTAL:-0}" != "1" ]]; then
+  echo "[09] Ultralight disabled (future addition)"
+fi
+
 if [[ "${DHCP_STACK:-dnsmasq}" == "dnsmasq" ]]; then
   sudo apt-get update -y && sudo apt-get install -y dnsmasq
   sudo install -m 0644 /opt/router/render/etc/dnsmasq.d/home-secnet.conf /etc/dnsmasq.d/home-secnet.conf || echo "[09] dnsmasq config install failed" >&2
@@ -319,6 +323,46 @@ fi
 # install ultralight health helper
 if [[ -f /opt/router/render/usr/local/sbin/ul_health.sh ]]; then
   sudo install -m 0755 /opt/router/render/usr/local/sbin/ul_health.sh /usr/local/sbin/ul_health.sh || echo "[09] ul_health install failed" >&2
+fi
+
+# Air-gapped SPA install if pre-staged in render
+if [[ -d /opt/router/render/opt/spa ]]; then
+  echo "[09] Found pre-staged SPA artifacts; verifying token and hashes..."
+  sudo mkdir -p /opt/spa
+  sudo install -m 0755 /opt/router/render/opt/spa/home-secnet-spa-pq /usr/local/bin/home-secnet-spa-pq 2>/dev/null || true
+  sudo install -m 0755 /opt/router/render/opt/spa/home-secnet-spa-pq-client /usr/local/bin/home-secnet-spa-pq-client 2>/dev/null || true
+  sudo install -m 0644 /opt/router/render/opt/spa/token.json /opt/spa/token.json 2>/dev/null || true
+  sudo install -m 0644 /opt/router/render/opt/spa/token.sig /opt/spa/token.sig 2>/dev/null || true
+  sudo install -m 0644 /opt/router/render/opt/spa/pubkey.gpg /opt/spa/pubkey.gpg 2>/dev/null || true
+  sudo install -m 0644 /opt/router/render/opt/spa/cosign.pub /opt/spa/cosign.pub 2>/dev/null || true
+  sudo install -m 0644 /opt/router/render/opt/spa/cosign.bundle /opt/spa/cosign.bundle 2>/dev/null || true
+
+  verify_ok=1
+  if [[ -f /opt/spa/token.json ]]; then
+    if [[ -f /opt/spa/token.sig && -f /opt/spa/pubkey.gpg && -x "$(command -v gpg || true)" ]]; then
+      gpg --import /opt/spa/pubkey.gpg >/dev/null 2>&1 || true
+      if gpg --verify /opt/spa/token.sig /opt/spa/token.json >/dev/null 2>&1; then verify_ok=0; else echo "[09] GPG verify failed" >&2; fi
+    elif [[ -f /opt/spa/token.sig && -f /opt/spa/cosign.pub && -x "$(command -v cosign || true)" ]]; then
+      if COSIGN_EXPERIMENTAL=1 cosign verify-blob --key /opt/spa/cosign.pub --signature /opt/spa/token.sig /opt/spa/token.json >/dev/null 2>&1; then verify_ok=0; else echo "[09] cosign verify failed" >&2; fi
+    else
+      echo "[09] No signature verification material found; proceeding without signature check" >&2
+      verify_ok=0
+    fi
+
+    if [[ $verify_ok -eq 0 ]]; then
+      # Validate SHA256s in token against staged binaries if present
+      server_sha="$(jq -r '.server.sha256 // empty' /opt/spa/token.json 2>/dev/null || true)"
+      client_sha="$(jq -r '.client.sha256 // empty' /opt/spa/token.json 2>/dev/null || true)"
+      if [[ -n "$server_sha" && -x /usr/local/bin/home-secnet-spa-pq ]]; then
+        calc_srv="$(sha256sum /usr/local/bin/home-secnet-spa-pq | awk '{print $1}')"
+        [[ "$calc_srv" == "$server_sha" ]] || echo "[09] server sha256 mismatch" >&2
+      fi
+      if [[ -n "$client_sha" && -x /usr/local/bin/home-secnet-spa-pq-client ]]; then
+        calc_cli="$(sha256sum /usr/local/bin/home-secnet-spa-pq-client | awk '{print $1}')"
+        [[ "$calc_cli" == "$client_sha" ]] || echo "[09] client sha256 mismatch" >&2
+      fi
+    fi
+  fi
 fi
 
 if systemctl is-enabled --quiet suricata 2>/dev/null; then
