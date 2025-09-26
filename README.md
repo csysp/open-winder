@@ -1,23 +1,96 @@
-Winder
+Winder (Router System)
 
-Winder is a turn-key router system for a Proxmox-based, WireGuard-first home network. It provisions an Ubuntu Router VM with hardened networking, optional DNS stacks, IDS, and SPA-gated WireGuard access using a post-quantum KEM control plane by default.
+Winder provides turn‑key automation for a Proxmox‑based, zero‑trust, WireGuard‑first home network. It provisions an Ubuntu Router VM with nftables, WireGuard, PQ‑KEM SPA control‑plane (default), AdGuard Home or Unbound, ISC DHCP, Suricata (inline), and traffic shaping; per‑VLAN DHCP with deny‑by‑default east‑west; and a Proxmox UI reachable only over WireGuard.
 
-Pre-Alpha / Pre-Release`nThis repository is pre‑alpha. Expect rapid changes and breaking updates. While releases are paused, install from main with the one‑liner installer: `curl -fsSL https://raw.githubusercontent.com/csysp/winder/main/home-secnet/scripts/install_winder.sh -o /tmp/install_winder.sh && chmod +x /tmp/install_winder.sh && /tmp/install_winder.sh`. The full runbook lives in `home-secnet/README.md`, and the environment example is at `home-secnet/.env.example`.
-- Read `home-secnet/README.md` for the full runbook and architecture.
-- Copy `home-secnet/.env.example` to `home-secnet/.env` and edit values.
-- Use `home-secnet/Makefile` targets or the scripts under `home-secnet/scripts/`.
+Quick Start (Runbook)
+- Preflight (tools & distro check): `bash scripts/preflight.sh`
+- Prepare environment (.env wizard): `bash scripts/setup_env.sh`
+- Detect NICs (confirm/override): `bash scripts/detect_nics.sh`
+- Harden Proxmox node: `bash scripts/harden_host.sh`
+- Create bridges: `bash scripts/configure_bridges.sh`
+- Fetch cloud image: `bash scripts/prepare_cloud_image.sh`
+- Create Router VM: `bash scripts/create_router_vm.sh`
+- Render router configs: `bash scripts/render_router_configs.sh`
+- Push/apply configs: `bash scripts/apply_router_configs.sh` (prompts for `ROUTER_IP` if needed)
+- Lock down node firewall: `bash scripts/apply_node_firewall.sh`
+- Security maintenance (updates + scanners): `bash scripts/setup_security_maintenance.sh`
+- Verify basic health: `bash scripts/verify_deploy.sh`
+- Migrate to flat LAN (optional): `bash scripts/migrate_to_flat_lan.sh`
 
-Quick Links
-- Runbook: `home-secnet/README.md`
-- Env template: `home-secnet/.env.example`
-- Make targets: `home-secnet/Makefile`
-- PQ SPA: `docs/SPA_PQ.md`
+Pre-Alpha / Pre-Release
+This project is pre‑alpha. Expect rapid iteration and breaking changes. While releases are paused, install from main with the one‑liner installer: `curl -fsSL https://raw.githubusercontent.com/csysp/winder/main/home-secnet/scripts/install_winder.sh -o /tmp/install_winder.sh && chmod +x /tmp/install_winder.sh && /tmp/install_winder.sh`.
 
-Script Help
-- All top-level scripts under `home-secnet/scripts/` support `-h`/`--help` and print purpose, inputs, and side effects.
+Make Targets
+- `make all`: Runs the end-to-end flow above.
+- `make router`: Bridges, image, router VM, render, push.
+- `make checks`: Runs the basic verifiers.
+- `make rotate-wg-key peer=<name>`: Rotates a specific WireGuard peer’s key, updates rendered server/client configs, and archives the prior client config.
+- SPA artifacts: Deployment is artifact-based. Control router SPA daemon version with `SPA_PQ_VERSION` in `.env` (tag or `latest`). Router downloads binary + `.sha256`, optionally verifies with GPG if `SPA_PQ_SIG_URL` and `/etc/spa/pubkey.gpg` are set, verifies sha256, and installs to `/usr/local/bin/home-secnet-spa-pq`.
+- Remote logging: Enable rsyslog forwarding by setting `RSYSLOG_FORWARD_ENABLE=true` and `RSYSLOG_REMOTE=host:port` in `.env`.
+- `make spa`: Builds PQ‑KEM SPA server and client crates.
 
-CI & Quality Gates`nOn every push or pull request, Rust crates run fmt and clippy with warnings as errors, then build and tests. Shell scripts are linted with ShellCheck, and secrets scanning runs across the working tree and history. A debug workflow builds artifacts with debuginfo on demand.`n`nNotes
-- Scripts are intended to run on a Proxmox host for provisioning and configuration; the SPA daemon runs on the Router VM.
-- CI builds the PQ SPA server/client crates, runs fmt/clippy/tests, lints shell scripts, and performs secrets scanning on each push.
+Assumptions & Prereqs
+- Proxmox VE installed on a small host. A second NIC is strongly recommended (USB 3.0 gigabit works well) to separate WAN and LAN.
+- Router VM: Ubuntu 24.04 (cloud image) with nftables, WireGuard, AdGuard Home or Unbound, ISC DHCP, Suricata, and tc.
+- VLANs optional. Set `USE_VLANS=true` for segmented LANs; the default is a flat LAN for unmanaged switches.
+- Proxmox UI (`:8006`) is only reachable from the WireGuard subnet.
 
-Air‑Gapped SPA Deployment`nFor high‑security or offline setups, pre‑stage the SPA server and client binaries plus a token describing their hashes (with an optional signature). Place `home-secnet-spa-pq`, `home-secnet-spa-pq-client`, `token.json` (and `token.sig` with `pubkey.gpg` or `cosign.pub`) under `home-secnet/render/opt/spa/` before applying. The installer performs no network fetch in this mode; it verifies the token when keys are provided, compares SHA256s, and installs the SPA daemon. If your Proxmox host is constrained or air‑gapped, build SPA on a separate machine and copy the artifacts.`n`nUltralight Mode`nUltralight aims to run Winder on Atom/Celeron‑era x86, NUCs, thin clients, or Pi 4/5 with a minimal footprint. It keeps WireGuard + SPA‑PQ, default‑drop nftables, deny‑by‑default per‑VLAN rules, and fq_codel, and pares back heavier components. It is experimental and disabled by default in this pre‑alpha; set `ULTRALIGHT_EXPERIMENTAL=1` before running `setup_env.sh` to see the prompt. Apply with `make -C home-secnet ultralight` when testing; on the router VM, `/usr/local/sbin/ul_health.sh` prints a brief status.
+Network Models
+- Two‑NIC recommended: `vmbr0` for WAN, `vmbr1` for LAN/VLAN trunk.
+- One‑NIC fallback: WAN on `vmbr0`. Separate LAN is not possible without a second NIC; scripts warn and let you abort.
+
+WireGuard Access
+- Server keys are generated during render in `render/wg/`.
+- Router config is applied to `/etc/wireguard/wg0.conf`.
+- A sample client is created at `clients/wg-client1.conf`; set `Endpoint = <YOUR_PUB_IP>:${WG_PORT}` before use.
+- Optional QUIC wrapper: set `WRAP_MODE=hysteria2` to run Hysteria2 on UDP `${WRAP_LISTEN_PORT}` and forward to WireGuard. A sample `clients/hysteria2-client.yaml` is generated.
+- SPA (Single Packet Authorization): set `SPA_ENABLE=true` to gate WireGuard. Only `SPA_MODE=pqkem` is supported (post‑quantum KEM + HMAC). CI builds the SPA daemon and publishes artifacts; deployments fetch the release binary rather than compiling on-router. Control version via `SPA_PQ_VERSION` in `.env`.
+
+Double-Hop Egress (Optional)
+- Enable with `DOUBLE_HOP_ENABLE=true` and fill `WG2_*` in `.env`. This creates `/etc/wireguard/wg1.conf` on the router and policy routes WG client traffic out via the remote exit node. Configure the exit node to accept `${WG2_ADDRESS}` and allow forwarding/NAT.
+
+DNS Options
+- Default: AdGuard Home with encrypted upstreams and DNSSEC, serving LAN and WG on port 53.
+- Alternative: set `DNS_STACK=unbound` in `.env`, re‑render, and push for local validating recursion.
+- To offer DoH/DoQ directly to clients via AdGuard Home, configure a trusted certificate and enable HTTPS listeners.
+
+Suricata & Logging
+- Suricata is configured inline on VLAN subinterfaces. Tune with `suricata-update` on the Router VM.
+- EVE JSON logs at `/var/log/suricata/eve.json`; logs are stored locally in `/var/log/secure/` for centralized access.
+
+Proxmox Firewall
+- Node firewall rules are rendered from `.env` and installed during the flow.
+- Default inbound DROP; SSH allowed from TRUSTED; `:8006` allowed only from WG and localhost.
+
+Security Highlights
+- SSH key‑only access; local passwords disabled where possible.
+- nftables default‑drop with inter‑VLAN isolation.
+- DHCP/DNS bound to VLANs and WG only.
+- Daily maintenance: unattended‑upgrades, Lynis audit, rkhunter/chkrootkit, and ClamAV on host and router.
+- Alerts: emails to `ALERT_EMAIL` on update errors, reboot‑required, audit warnings, or detections. Optional SMTP relay via msmtp (`SMTP_ENABLE=true`).
+- Remote logging: enable rsyslog forwarding by setting `RSYSLOG_FORWARD_ENABLE=true` and `RSYSLOG_REMOTE=host:port`. Auth, Suricata, and SPA logs are forwarded off‑box for tamper‑resistant audit trails.
+
+Traffic Shaping
+- fq_codel enabled on LAN. Basic rate limiting is supported; more advanced padding/morphing may be added later.
+
+Next Steps
+- Connect a peer using `clients/wg-client1.conf` (or generate a QR with `qrencode`).
+- Move LAN devices to the correct VLAN ports on your switch.
+- Optionally route Proxmox updates through the Router VM’s WireGuard egress.
+
+Notes & Limitations
+- Some downloads (e.g., images) are best‑effort and may require retries.
+- Static WAN: adjust the rendered netplan or extend the render step to write static WAN from `.env`.
+- Email alerts require a mailer. Scripts prefer `mail` (bsd‑mailx), then `msmtp`, then `sendmail`. Set SMTP vars in `.env` to relay.
+
+Migration
+- If you started with VLANs and want a flat LAN:
+  - Run `bash scripts/migrate_to_flat_lan.sh` on the Proxmox host to update bridges, remove VM NIC VLAN tags, regenerate configs, and push to the Router VM. Router configs are backed up before replacement.
+  - The Router VM LAN interface remains `${ROUTER_LAN_IF}` with IP `${GW_TRUSTED}`; VLAN subinterfaces are removed by netplan.
+  - DHCP will listen only on `${ROUTER_LAN_IF}`.
+SPA (PQ‑KEM) Summary
+- Default SPA mode: `pqkem` using ML‑KEM/Kyber‑768 and HMAC‑SHA256.
+- Daemon: `home-secnet/router/spa-pq` runs on the router, listening on `SPA_PQ_PORT`, inserting ephemeral allow rules into nftables chain `wg_spa_allow` for `OPEN_SECS`.
+- Client: Rust tool under `home-secnet/clients/spa-pq-client` sends a single knock. Client config template is written to `clients/spa-pq-client.json` during render.
+- See `docs/SPA_PQ.md` for packet format, variables, and troubleshooting.
+
