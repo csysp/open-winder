@@ -18,11 +18,7 @@ Quick Start (Runbook)
 - Migrate to flat LAN (optional): `bash scripts/migrate_to_flat_lan.sh`
 
 Pre-Alpha / Pre-Release
-- This project is pre-alpha. Expect rapid iteration and breaking changes.
-- Prefer the main-branch installer while releases are paused:
-  - curl -fsSL https://raw.githubusercontent.com/csysp/winder/main/home-secnet/scripts/install_winder.sh -o /tmp/install_winder.sh
-  - chmod +x /tmp/install_winder.sh
-  - /tmp/install_winder.sh
+This project is pre‑alpha. Expect rapid iteration and breaking changes. While releases are paused, install from main with the one‑liner installer: `curl -fsSL https://raw.githubusercontent.com/csysp/winder/main/home-secnet/scripts/install_winder.sh -o /tmp/install_winder.sh && chmod +x /tmp/install_winder.sh && /tmp/install_winder.sh`.
 
 Make Targets
 - `make all`: Runs the end-to-end flow above.
