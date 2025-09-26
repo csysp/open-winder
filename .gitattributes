@@ -1,0 +1,12 @@
+*.sh text eol=lf
+Makefile text eol=lf
+*.md text eol=lf
+home-secnet/.env.example text eol=lf
+home-secnet/.env text eol=lf
+*.rs text eol=lf
+Cargo.toml text eol=lf
+Cargo.lock text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.conf text eol=lf
