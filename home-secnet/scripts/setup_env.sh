@@ -52,6 +52,19 @@ fi
   echo "SHAPING_ENABLE=${SHAPING_ENABLE:-true}"
   echo "LOG_VERBOSITY=${LOG_VERBOSITY:-minimal}"
 } >> "$(dirname "$0")/../.env"
+
+# Randomize WG_PORT on first setup if not already set
+if ! grep -q '^WG_PORT=' "$(dirname "$0")/../.env" 2>/dev/null; then
+  # Choose a UDP port in 20000-61000 range avoiding common services
+  WG_PORT=$(( (RANDOM % 41000) + 20000 ))
+  printf 'WG_PORT=%s\n' "$WG_PORT" >> "$(dirname "$0")/../.env"
+fi
+
+# Run NIC detection on initial setup to prefill physical mappings
+if ! grep -q '^PHYS_WAN_IF=' "$(dirname "$0")/../.env" 2>/dev/null; then
+  echo "[01] Detecting NICs to prefill WAN/LAN..."
+  "$(dirname "$0")/detect_nics.sh" || true
+fi
 # shellcheck source=scripts/lib/log.sh
 # shellcheck source=home-secnet/scripts/lib/log.sh
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"
