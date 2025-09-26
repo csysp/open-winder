@@ -30,14 +30,12 @@ rsync -av "$ROOT_DIR/router/cloudinit/" ${RUSER}@${ROUTER_IP}:/opt/router/cloudi
 if [[ -d "$ROOT_DIR/render/spa/pq" ]]; then
   rsync -av "$ROOT_DIR/render/spa/pq/" ${RUSER}@${ROUTER_IP}:/opt/router/spa-pq/
 fi
-if [[ -d "$ROOT_DIR/router/spa-pq" ]]; then
-  rsync -av "$ROOT_DIR/router/spa-pq/" ${RUSER}@${ROUTER_IP}:/opt/router/spa-pq-src/
-fi
+  # no longer building on router; spa-pq-src sync removed
 if [[ -d "$ROOT_DIR/render/router/systemd" ]]; then
   rsync -av "$ROOT_DIR/render/router/systemd/" ${RUSER}@${ROUTER_IP}:/opt/router/systemd/rendered/
 fi
 
-ssh ${RUSER}@${ROUTER_IP} "USE_VLANS='${USE_VLANS}' ROUTER_LAN_IF='${ROUTER_LAN_IF}' VLAN_TRUSTED='${VLAN_TRUSTED}' VLAN_IOT='${VLAN_IOT}' VLAN_GUEST='${VLAN_GUEST}' VLAN_LAB='${VLAN_LAB}' DISABLE_USB_STORAGE='${DISABLE_USB_STORAGE}' HARDEN_AUDITD='${HARDEN_AUDITD}' INSTALL_AIDE='${INSTALL_AIDE}' FAIL2BAN_ENABLE='${FAIL2BAN_ENABLE}' ADGUARD_VERSION='${ADGUARD_VERSION}' HYSTERIA_VERSION='latest' bash -s" <<'EOSSH'
+ssh ${RUSER}@${ROUTER_IP} "USE_VLANS='${USE_VLANS}' ROUTER_LAN_IF='${ROUTER_LAN_IF}' VLAN_TRUSTED='${VLAN_TRUSTED}' VLAN_IOT='${VLAN_IOT}' VLAN_GUEST='${VLAN_GUEST}' VLAN_LAB='${VLAN_LAB}' DISABLE_USB_STORAGE='${DISABLE_USB_STORAGE}' HARDEN_AUDITD='${HARDEN_AUDITD}' INSTALL_AIDE='${INSTALL_AIDE}' FAIL2BAN_ENABLE='${FAIL2BAN_ENABLE}' ADGUARD_VERSION='${ADGUARD_VERSION}' HYSTERIA_VERSION='latest' RSYSLOG_FORWARD_ENABLE='${RSYSLOG_FORWARD_ENABLE:-false}' RSYSLOG_REMOTE='${RSYSLOG_REMOTE:-}' SPA_PQ_VERSION='${SPA_PQ_VERSION:-latest}' SPA_PQ_SIG_URL='${SPA_PQ_SIG_URL:-}' bash -s" <<'EOSSH'
 set -euo pipefail
 sudo mkdir -p /etc/netplan /etc/wireguard
 # Backups with timestamp
@@ -156,12 +154,17 @@ if [[ "${SPA_ENABLE}" == "true" ]]; then
     if ! id -u winder-spa >/dev/null 2>&1; then
       sudo useradd --system --no-create-home --shell /usr/sbin/nologin winder-spa || true
     fi
-    # Install toolchain and build server from source
-    sudo apt-get update -y && sudo apt-get install -y rustc cargo pkg-config build-essential
-    if [[ -d /opt/router/spa-pq-src ]]; then
-      (cd /opt/router/spa-pq-src && cargo build --release)
-      sudo install -m 0755 /opt/router/spa-pq-src/target/release/home-secnet-spa-pq /usr/local/bin/home-secnet-spa-pq
-    fi
+    # Fetch prebuilt, trusted SPA binary from GitHub Releases
+    SPA_VER="${SPA_PQ_VERSION:-latest}"
+    ARCH_BIN="home-secnet-spa-pq"
+    DL_URL="https://github.com/csysp/winder/releases/download/${SPA_VER}/${ARCH_BIN}"
+    DL_SHA="${DL_URL}.sha256"
+    tmpd=$(mktemp -d)
+    trap 'rm -rf "$tmpd"' EXIT
+    curl -fsSL "$DL_URL" -o "$tmpd/$ARCH_BIN"
+    curl -fsSL "$DL_SHA" -o "$tmpd/$ARCH_BIN.sha256"
+    (cd "$tmpd" && sha256sum -c "$ARCH_BIN.sha256")
+    sudo install -m 0755 "$tmpd/$ARCH_BIN" /usr/local/bin/home-secnet-spa-pq
     # Install secrets
     sudo mkdir -p /etc/spa
     if [[ -f /opt/router/spa-pq/psk.bin ]]; then
@@ -248,6 +251,15 @@ sudo bash -lc 'cfg=/etc/login.defs; \
   sed -i -E "s/^#?PASS_MAX_DAYS\s+.*/PASS_MAX_DAYS\t365/" "$cfg" || echo "PASS_MAX_DAYS\t365" >> "$cfg"; \
   sed -i -E "s/^#?PASS_MIN_DAYS\s+.*/PASS_MIN_DAYS\t1/" "$cfg" || echo "PASS_MIN_DAYS\t1" >> "$cfg"; \
   sed -i -E "s/^#?PASS_WARN_AGE\s+.*/PASS_WARN_AGE\t14/" "$cfg" || echo "PASS_WARN_AGE\t14" >> "$cfg";'
+
+# RSyslog forwarding (optional)
+if [[ "${RSYSLOG_FORWARD_ENABLE}" == "true" && -n "${RSYSLOG_REMOTE}" ]]; then
+  sudo mkdir -p /etc/rsyslog.d
+  if [[ -f /opt/router/systemd/security/rsyslog-forward.conf ]]; then
+    sudo sed "s#RSYSLOG_REMOTE#${RSYSLOG_REMOTE}#g" /opt/router/systemd/security/rsyslog-forward.conf | sudo tee /etc/rsyslog.d/99-winder-forward.conf >/dev/null
+    sudo systemctl restart rsyslog
+  fi
+fi
 EOSSH
 
 echo "[09] Push and apply complete."

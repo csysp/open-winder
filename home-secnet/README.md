@@ -21,6 +21,7 @@ Make Targets
 - `make all`: Runs the end-to-end flow above.
 - `make router`: Bridges, image, router VM, render, push.
 - `make checks`: Runs the basic verifiers.
+- `make rotate-wg-key peer=<name>`: Rotates a specific WireGuard peer’s key, updates rendered server/client configs, and archives the prior client config.
 - `make spa`: Builds PQ‑KEM SPA server and client crates.
 
 Assumptions & Prereqs
@@ -38,7 +39,7 @@ WireGuard Access
 - Router config is applied to `/etc/wireguard/wg0.conf`.
 - A sample client is created at `clients/wg-client1.conf`; set `Endpoint = <YOUR_PUB_IP>:${WG_PORT}` before use.
 - Optional QUIC wrapper: set `WRAP_MODE=hysteria2` to run Hysteria2 on UDP `${WRAP_LISTEN_PORT}` and forward to WireGuard. A sample `clients/hysteria2-client.yaml` is generated.
-- SPA (Single Packet Authorization): set `SPA_ENABLE=true` to gate WireGuard. Default mode is `SPA_MODE=pqkem` (post‑quantum KEM + HMAC). Legacy fwknop mode has been removed.
+- SPA (Single Packet Authorization): set `SPA_ENABLE=true` to gate WireGuard. Only `SPA_MODE=pqkem` is supported (post‑quantum KEM + HMAC). CI builds the SPA daemon and publishes artifacts; deployments fetch the release binary rather than compiling on-router. Control version via `SPA_PQ_VERSION` in `.env`.
 
 Double-Hop Egress (Optional)
 - Enable with `DOUBLE_HOP_ENABLE=true` and fill `WG2_*` in `.env`. This creates `/etc/wireguard/wg1.conf` on the router and policy routes WG client traffic out via the remote exit node. Configure the exit node to accept `${WG2_ADDRESS}` and allow forwarding/NAT.
@@ -62,6 +63,7 @@ Security Highlights
 - DHCP/DNS bound to VLANs and WG only.
 - Daily maintenance: unattended‑upgrades, Lynis audit, rkhunter/chkrootkit, and ClamAV on host and router.
 - Alerts: emails to `ALERT_EMAIL` on update errors, reboot‑required, audit warnings, or detections. Optional SMTP relay via msmtp (`SMTP_ENABLE=true`).
+- Remote logging: enable rsyslog forwarding by setting `RSYSLOG_FORWARD_ENABLE=true` and `RSYSLOG_REMOTE=host:port`. Auth, Suricata, and SPA logs are forwarded off‑box for tamper‑resistant audit trails.
 
 Traffic Shaping
 - fq_codel enabled on LAN. Basic rate limiting is supported; more advanced padding/morphing may be added later.
