@@ -1,5 +1,19 @@
 Changelog
 
+0.1.1
+
+- Setup wizard improvements
+  - Load defaults early from .env.example then .env (strict-mode safe)
+  - Defaults: WRAP_MODE=hysteria2, DNS_STACK=unbound, SPA_ENABLE=true, DOUBLE_HOP_ENABLE=true
+  - Randomize WG_PORT once and persist immediately
+  - Early NIC detection and .env reload
+  - Require non-empty Proxmox node name
+  - Atomic .env updates (no duplicate keys)
+- Installer
+  - Add install_winder.sh and pin to v0.1.1 tarball
+- Nftables
+  - Ultralight dedicated table without flushing global rules; persisted includes
+
 0.1.0 (alpha)
 
 - Features
@@ -18,4 +32,3 @@ Changelog
   - Ultralight is opt‑in via setup prompt
   - Nftables persists via includes; no ruleset flush
   - Suricata disabled in Ultralight; full mode can enable IDS later
-

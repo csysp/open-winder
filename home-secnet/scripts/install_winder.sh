@@ -32,9 +32,9 @@ if [[ -d /root/winder ]]; then
   exit 1
 fi
 
-curl -fsSL -o winder-v0.1.0.tar.gz https://github.com/csysp/winder/archive/refs/tags/v0.1.0.tar.gz
-tar -xzf winder-v0.1.0.tar.gz
-mv winder-0.1.0 winder
+curl -fsSL -o winder-v0.1.1.tar.gz https://github.com/csysp/winder/archive/refs/tags/v0.1.1.tar.gz
+tar -xzf winder-v0.1.1.tar.gz
+mv winder-0.1.1 winder
 cd winder
 
 bash home-secnet/scripts/preflight.sh
@@ -43,4 +43,3 @@ bash home-secnet/scripts/setup_env.sh
 make -C home-secnet "$TARGET"
 
 echo "Install complete. See home-secnet/README.md for next steps."
-
