@@ -207,7 +207,7 @@ fi
 if [[ -f /etc/wireguard/wg1.conf ]]; then
   sudo systemctl enable --now wg-quick@wg1
 fi
-sudo systemctl enable --now suricata
+sudo systemctl enable --now suricata || true
 
 # Apply hardening: sysctl, modprobe blacklist, ssh, login defs, banner, profile
 sudo mkdir -p /etc/sysctl.d /etc/modprobe.d /etc/security/limits.d /etc/profile.d /etc/home-secnet

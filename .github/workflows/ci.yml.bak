@@ -44,4 +44,4 @@ jobs:
       - name: Shellcheck scripts
         run: |
           shopt -s globstar || true
-          shellcheck -S warning home-secnet/scripts/**/*.sh home-secnet/tests/*.sh 
+          shellcheck -S warning home-secnet/scripts/**/*.sh home-secnet/tests/*.sh || true

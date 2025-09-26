@@ -37,11 +37,11 @@ router: spa
 	bash scripts/apply_router_configs.sh
 
 checks:
-	bash tests/verify_wg.sh || true
-	bash tests/verify_dns.sh || true
-	bash tests/verify_isolation.sh || true
-	bash tests/verify_ids.sh || true
-	bash tests/verify_spa.sh || true
+	bash tests/verify_wg.sh 
+	bash tests/verify_dns.sh 
+	bash tests/verify_isolation.sh 
+	bash tests/verify_ids.sh 
+	bash tests/verify_spa.sh 
 
 clean:
 	rm -rf render/ clients/
