@@ -19,6 +19,81 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
   usage; exit 0
 fi
 
+# Resolve paths
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENV_FILE="$ENV_ROOT/.env"
+ENV_EXAMPLE="$ENV_ROOT/.env.example"
+
+# Helpers
+update_env() {
+  local key="$1"; shift
+  local val="$1"; shift || true
+  local tmp
+  tmp="${ENV_FILE}.tmp$$"
+  umask 077
+  if [[ -f "$ENV_FILE" ]]; then
+    # replace existing key or append
+    if rg -n "^${key}=" "$ENV_FILE" >/dev/null 2>&1; then
+      sed -E "s|^(${key}=).*|\\1${val}|" "$ENV_FILE" >"$tmp"
+    else
+      cat "$ENV_FILE" >"$tmp"
+      printf '%s=%s\n' "$key" "$val" >>"$tmp"
+    fi
+  else
+    printf '%s=%s\n' "$key" "$val" >"$tmp"
+  fi
+  mv -f "$tmp" "$ENV_FILE"
+}
+
+ensure_default() {
+  local key="$1"; local def="$2"
+  # shellcheck disable=SC2154
+  if [[ -z "${!key:-}" ]]; then
+    export "$key"="$def"
+  fi
+}
+
+require_nonempty() {
+  local key="$1"; shift
+  local prompt="$*"
+  local val="${!key:-}"
+  while [[ -z "$val" ]]; do
+    read -r -p "$prompt: " val
+  done
+  export "$key"="$val"
+  update_env "$key" "$val"
+}
+
+# Load defaults early (avoid unbound vars)
+set +u
+[[ -f "$ENV_EXAMPLE" ]] && source "$ENV_EXAMPLE"
+[[ -f "$ENV_FILE" ]] && source "$ENV_FILE"
+set -u
+
+# Apply requested default behaviors in-memory if not set
+ensure_default WRAP_MODE hysteria2
+ensure_default DNS_STACK unbound
+ensure_default SPA_ENABLE true
+ensure_default DOUBLE_HOP_ENABLE true
+
+# Randomize WG_PORT once if unset and persist immediately
+if [[ -z "${WG_PORT:-}" ]]; then
+  WG_PORT=$(( (RANDOM % 41000) + 20000 ))
+  export WG_PORT
+  update_env WG_PORT "$WG_PORT"
+fi
+
+# Early NIC detection when unset
+if [[ -z "${PHYS_WAN_IF:-}" || -z "${PHYS_LAN_IF:-}" ]]; then
+  echo "[01] Detecting NICs to prefill WAN/LAN..."
+  "$SCRIPT_DIR/detect_nics.sh" || true
+  # Reload env after detection
+  set +u
+  [[ -f "$ENV_FILE" ]] && source "$ENV_FILE"
+  set -u
+fi
+
 echo ""
 echo "Ultralight Mode targets old/tiny x86 and Pi-class devices."
 read -r -p "Enable Ultralight Mode (disable Suricata, use dnsmasq, minimal logs)? [y/N] " _ul
@@ -38,20 +113,21 @@ else
   export ULTRALIGHT_MODE=false
 fi
 
-# Persist Ultralight choices to .env (append)
-{
-  echo "ULTRALIGHT_MODE=${ULTRALIGHT_MODE}"
-  echo "IDS_MODE=${IDS_MODE:-none}"
-  echo "DHCP_STACK=${DHCP_STACK:-dnsmasq}"
-  echo "DNS_STACK=${DNS_STACK:-unbound}"
-  echo "NFT_GUARD_ENABLE=${NFT_GUARD_ENABLE:-true}"
-  echo "NFT_SYNOPROXY_ENABLE=${NFT_SYNOPROXY_ENABLE:-true}"
-  echo "NFT_RATE_LIMIT_ENABLE=${NFT_RATE_LIMIT_ENABLE:-true}"
-  echo "NFT_BOGONS_ENABLE=${NFT_BOGONS_ENABLE:-true}"
-  echo "NFT_DYNAMIC_BAN_ENABLE=${NFT_DYNAMIC_BAN_ENABLE:-false}"
-  echo "SHAPING_ENABLE=${SHAPING_ENABLE:-true}"
-  echo "LOG_VERBOSITY=${LOG_VERBOSITY:-minimal}"
-} >> "$(dirname "$0")/../.env"
+# Persist choices via upsert
+update_env ULTRALIGHT_MODE "${ULTRALIGHT_MODE}"
+update_env IDS_MODE "${IDS_MODE:-none}"
+update_env DHCP_STACK "${DHCP_STACK:-dnsmasq}"
+update_env DNS_STACK "${DNS_STACK:-unbound}"
+update_env NFT_GUARD_ENABLE "${NFT_GUARD_ENABLE:-true}"
+update_env NFT_SYNOPROXY_ENABLE "${NFT_SYNOPROXY_ENABLE:-true}"
+update_env NFT_RATE_LIMIT_ENABLE "${NFT_RATE_LIMIT_ENABLE:-true}"
+update_env NFT_BOGONS_ENABLE "${NFT_BOGONS_ENABLE:-true}"
+update_env NFT_DYNAMIC_BAN_ENABLE "${NFT_DYNAMIC_BAN_ENABLE:-false}"
+update_env SHAPING_ENABLE "${SHAPING_ENABLE:-true}"
+update_env LOG_VERBOSITY "${LOG_VERBOSITY:-minimal}"
+
+# Ensure required fields
+require_nonempty PVE_NODE "Proxmox node name (e.g., pve)"
 
 # Randomize WG_PORT on first setup if not already set
 if ! grep -q '^WG_PORT=' "$(dirname "$0")/../.env" 2>/dev/null; then
