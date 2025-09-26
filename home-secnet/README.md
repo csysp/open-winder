@@ -22,6 +22,8 @@ Make Targets
 - `make router`: Bridges, image, router VM, render, push.
 - `make checks`: Runs the basic verifiers.
 - `make rotate-wg-key peer=<name>`: Rotates a specific WireGuard peer’s key, updates rendered server/client configs, and archives the prior client config.
+- SPA artifacts: Deployment is artifact-based. Control router SPA daemon version with `SPA_PQ_VERSION` in `.env` (tag or `latest`). Router downloads binary + `.sha256`, optionally verifies with GPG if `SPA_PQ_SIG_URL` and `/etc/spa/pubkey.gpg` are set, verifies sha256, and installs to `/usr/local/bin/home-secnet-spa-pq`.
+- Remote logging: Enable rsyslog forwarding by setting `RSYSLOG_FORWARD_ENABLE=true` and `RSYSLOG_REMOTE=host:port` in `.env`.
 - `make spa`: Builds PQ‑KEM SPA server and client crates.
 
 Assumptions & Prereqs

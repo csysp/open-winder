@@ -164,6 +164,14 @@ if [[ "${SPA_ENABLE}" == "true" ]]; then
     trap 'rm -rf "$tmpd"' EXIT
     curl -fsSL "$DL_URL" -o "$tmpd/$ARCH_BIN"
     curl -fsSL "$DL_SHA" -o "$tmpd/$ARCH_BIN.sha256"
+    # Optional GPG verification of checksum file
+    if [[ -n "${SPA_PQ_SIG_URL:-}" && -f /etc/spa/pubkey.gpg ]]; then
+      curl -fsSL "${SPA_PQ_SIG_URL}" -o "$tmpd/$ARCH_BIN.sha256.asc" || true
+      if [[ -s "$tmpd/$ARCH_BIN.sha256.asc" ]]; then
+        gpg --import /etc/spa/pubkey.gpg || true
+        gpg --verify "$tmpd/$ARCH_BIN.sha256.asc" "$tmpd/$ARCH_BIN.sha256"
+      fi
+    fi
     (cd "$tmpd" && sha256sum -c "$ARCH_BIN.sha256")
     sudo install -m 0755 "$tmpd/$ARCH_BIN" /usr/local/bin/home-secnet-spa-pq
     # Install secrets
