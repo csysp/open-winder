@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail; IFS=$'\n\t'
+# Purpose: Apply baseline hardening to Proxmox host.
+# Inputs: VERBOSE (optional)
+# Outputs: none
+# Side effects: Modifies system configs (ssh, fail2ban, kernel params)
+
+usage() {
+  cat <<'USAGE'
+Usage: harden_host.sh
+  Applies baseline hardening measures on the host.
+
+Environment:
+  VERBOSE=1   Enable verbose logging
+USAGE
+}
+
+if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
+  usage; exit 0
+fi
 # shellcheck source=scripts/lib/log.sh
 # shellcheck source=home-secnet/scripts/lib/log.sh
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"
@@ -34,16 +52,16 @@ sed -i -E 's/^#?UseDNS .*/UseDNS no/' /etc/ssh/sshd_config
 if ! grep -q '^AllowUsers ' /etc/ssh/sshd_config; then
   echo "AllowUsers ${ROUTER_ADMIN_USER:-admin} ${LOG_ADMIN_USER:-admin}" >> /etc/ssh/sshd_config
 fi
-systemctl reload ssh || systemctl reload sshd || true
+systemctl reload ssh || systemctl reload sshd || log_warn "[03] ssh reload failed; check sshd_config"
 
 echo "[03] Installing lynis and security tooling..."
 apt-get update -y
 apt-get install -y lynis libpam-tmpdir libpam-pwquality fail2ban
-systemctl enable --now fail2ban || true
+systemctl enable --now fail2ban || log_warn "[03] fail2ban enable/start failed"
 
 # Ensure fail2ban monitors sshd via systemd journal
 if [[ ! -f /etc/fail2ban/jail.local ]]; then
-  cp -f /etc/fail2ban/jail.conf /etc/fail2ban/jail.local || true
+  cp -f /etc/fail2ban/jail.conf /etc/fail2ban/jail.local || log_warn "[03] could not copy fail2ban jail.local"
 fi
 mkdir -p /etc/fail2ban/jail.d
 cat > /etc/fail2ban/jail.d/sshd.local <<'EOF'
@@ -51,24 +69,24 @@ cat > /etc/fail2ban/jail.d/sshd.local <<'EOF'
 enabled = true
 backend = systemd
 EOF
-systemctl restart fail2ban || true
+systemctl restart fail2ban || log_warn "[03] fail2ban restart failed"
 
-lynis audit system || true
+lynis audit system || log_warn "[03] lynis audit returned non-zero"
 
 echo "[03] Enabling Proxmox node firewall with inbound DROP..."
-pve-firewall status || true
+pve-firewall status || log_warn "[03] pve-firewall status failed"
 if command -v pvesh >/dev/null 2>&1; then
   # Enable cluster and node firewall, set default policies
-  pvesh set "/cluster/firewall/options" --enable 1 >/dev/null 2>&1 || true
-  pvesh set "/nodes/$(hostname)/firewall/options" --enable 1 --policy_in DROP --policy_out ACCEPT >/dev/null 2>&1 || true
+  pvesh set "/cluster/firewall/options" --enable 1 >/dev/null 2>&1 || log_warn "[03] Could not enable cluster firewall options"
+  pvesh set "/nodes/$(hostname)/firewall/options" --enable 1 --policy_in DROP --policy_out ACCEPT >/dev/null 2>&1 || log_warn "[03] Could not enable node firewall or set policies"
 fi
 # Apply firewall rules
-pve-firewall compile || true
-pve-firewall restart || true
+pve-firewall compile || log_warn "[03] pve-firewall compile failed"
+pve-firewall restart || log_warn "[03] pve-firewall restart failed"
 
 echo "[03] Disabling unused services (nfs, samba/cifs if present)..."
-systemctl disable --now nfs-server 2>/dev/null || true
-systemctl disable --now smbd nmbd 2>/dev/null || true
+systemctl disable --now nfs-server 2>/dev/null || log_warn "[03] could not disable nfs-server"
+systemctl disable --now smbd nmbd 2>/dev/null || log_warn "[03] could not disable smbd/nmbd"
 
 echo "[03] Applying kernel/network hardening sysctls..."
 cat > /etc/sysctl.d/99-home-secnet.conf <<'EOF'
@@ -91,7 +109,7 @@ net.ipv4.conf.default.rp_filter = 1
 net.ipv6.conf.all.accept_redirects = 0
 net.ipv6.conf.default.accept_redirects = 0
 EOF
-sysctl --system || true
+sysctl --system || log_warn "[03] sysctl --system returned non-zero"
 
 echo "[03] Blacklisting uncommon network protocols..."
 cat > /etc/modprobe.d/blacklist-home-secnet.conf <<'EOF'

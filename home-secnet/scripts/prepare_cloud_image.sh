@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail; IFS=$'\n\t'
+# Purpose: Prepare cloud-init image for Router VM.
+# Inputs: .env via scripts/lib/env.sh; VERBOSE (optional)
+# Outputs: cloud image and seed under render/ or Proxmox storage
+# Side effects: Downloads images, writes seed configs
+
+usage() {
+  cat <<'USAGE'
+Usage: prepare_cloud_image.sh
+  Downloads and prepares Ubuntu cloud image and cloud-init seed.
+
+Environment:
+  VERBOSE=1   Enable verbose logging
+USAGE
+}
+
+if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
+  usage; exit 0
+fi
 # shellcheck source=scripts/lib/log.sh
 # shellcheck source=home-secnet/scripts/lib/log.sh
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"

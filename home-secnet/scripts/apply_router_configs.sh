@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail; IFS=$'\n\t'
+# Purpose: Push rendered configs to Router VM and apply them safely.
+# Inputs: .env via scripts/lib/env.sh; VERBOSE (optional)
+# Outputs: none
+# Side effects: Modifies Router VM config files/services.
+
+usage() {
+  cat <<'USAGE'
+Usage: apply_router_configs.sh
+  Copies home-secnet/render/ to Router VM and applies configs.
+
+Environment:
+  VERBOSE=1   Enable verbose logging
+USAGE
+}
+
+if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
+  usage; exit 0
+fi
 # shellcheck source=scripts/lib/log.sh
 # shellcheck source=home-secnet/scripts/lib/log.sh
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"
@@ -16,7 +34,8 @@ source "$ROOT_DIR/.env"
 ROUTER_IP="${ROUTER_IP:-}" # allow override
 if [[ -z "${ROUTER_IP}" ]]; then
   if qm agent $ROUTER_VM_ID network-get-interfaces >/dev/null 2>&1; then
-    ROUTER_IP=$(qm agent $ROUTER_VM_ID network-get-interfaces | awk -F'"' '/"ip-address":/ {print $4}' | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -n1 || true)
+    ROUTER_IP=$(qm agent $ROUTER_VM_ID network-get-interfaces | awk -F'"' '/"ip-address":/ {print $4}' | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -n1 || echo "")
+    if [[ -z "${ROUTER_IP:-}" ]]; then log_warn "[09] Could not determine Router IP via qemu-guest-agent"; fi
   fi
 fi
 if [[ -z "${ROUTER_IP}" ]]; then
@@ -28,7 +47,7 @@ echo "[09] Using Router VM IP: $ROUTER_IP"
 
 RUSER=${ROUTER_ADMIN_USER}
 
-ssh -o StrictHostKeyChecking=no ${RUSER}@${ROUTER_IP} "sudo mkdir -p /opt/router && sudo chown \$(id -un):\$(id -gn) /opt/router"
+ssh -o StrictHostKeyChecking=accept-new ${RUSER}@${ROUTER_IP} "sudo mkdir -p /opt/router && sudo chown \$(id -un):\$(id -gn) /opt/router"
 rsync -av --delete "$ROOT_DIR/render/router/configs/" ${RUSER}@${ROUTER_IP}:/opt/router/
 rsync -av "$ROOT_DIR/router/systemd/" ${RUSER}@${ROUTER_IP}:/opt/router/systemd/
 rsync -av "$ROOT_DIR/router/hardening/" ${RUSER}@${ROUTER_IP}:/opt/router/hardening/
@@ -89,7 +108,7 @@ if [[ -f /opt/router/hysteria2.yaml ]]; then
 fi
 sudo cp /opt/router/suricata.yaml /etc/suricata/suricata.yaml
 sudo install -m 0755 /opt/router/tc-shaping.sh /opt/router/tc-shaping.sh
-rm -f /etc/rsyslog.d/90-remote.conf 2>/dev/null || true
+rm -f /etc/rsyslog.d/90-remote.conf 2>/dev/null || echo "[09] no prior rsyslog remote config" >&2
 if [[ -f /opt/router/rsyslog-secure.conf ]]; then
   sudo cp /opt/router/rsyslog-secure.conf /etc/rsyslog.d/99-secure.conf
   sudo systemctl restart rsyslog
@@ -122,12 +141,12 @@ if [[ -f /opt/adguard/AdGuardHome.yaml ]]; then
     sudo ADGUARD_VERSION="${ADGUARD_VERSION:-latest}" /opt/adguard/install-adguard.sh
   fi
   # Stop unbound if running and enable AdGuard
-  sudo systemctl disable --now unbound 2>/dev/null || true
+  sudo systemctl disable --now unbound 2>/dev/null || echo "[09] unbound not active" >&2
   sudo systemctl enable --now adguardhome.service
 else
   echo "[router] DNS stack: Unbound"
   sudo systemctl enable --now unbound
-  sudo systemctl disable --now adguardhome.service 2>/dev/null || true
+  sudo systemctl disable --now adguardhome.service 2>/dev/null || echo "[09] AdGuard not active" >&2
 fi
 
 # Start QUIC wrapper if configured
@@ -137,7 +156,8 @@ if [[ -f /etc/hysteria/config.yaml ]]; then
   fi
   # Generate self-signed cert if missing
   if [[ ! -f /etc/hysteria/server.crt || ! -f /etc/hysteria/server.key ]]; then
-    sudo apt-get update -y && sudo apt-get install -y openssl || true
+    if ! sudo apt-get update -y; then echo "[09] apt-get update failed on router" >&2; fi
+    if ! sudo apt-get install -y openssl; then echo "[09] install openssl failed on router" >&2; fi
     sudo openssl req -x509 -newkey rsa:2048 -nodes -days 825 -subj "/CN=${WRAP_DOMAIN:-hysteria.local}" -keyout /etc/hysteria/server.key -out /etc/hysteria/server.crt
     sudo chmod 600 /etc/hysteria/server.key
   fi
@@ -149,16 +169,16 @@ if [[ "${SPA_ENABLE}" == "true" ]]; then
   if [[ "${SPA_MODE:-pqkem}" == "pqkem" ]]; then
     echo "[router] Configuring PQ-KEM SPA daemon"
     # Ensure nftables table/chain as a safety net (nftables.conf should already include these)
-    sudo nft list table inet filter >/dev/null 2>&1 || sudo nft add table inet filter || true
+    sudo nft list table inet filter >/dev/null 2>&1 || sudo nft add table inet filter || echo "[09] failed to add nft table inet filter" >&2
     # Create chain if missing
-    sudo nft list chain inet filter wg_spa_allow >/dev/null 2>&1 || sudo nft add chain inet filter wg_spa_allow '{ }' || true
+    sudo nft list chain inet filter wg_spa_allow >/dev/null 2>&1 || sudo nft add chain inet filter wg_spa_allow '{ }' || echo "[09] failed to add chain wg_spa_allow" >&2
     # Ensure jump rule exists in input chain (idempotent)
     if ! sudo nft list chain inet filter input | grep -q "udp dport ${WG_PORT} jump wg_spa_allow"; then
       sudo nft insert rule inet filter input udp dport ${WG_PORT} jump wg_spa_allow
     fi
     # Create service user
     if ! id -u winder-spa >/dev/null 2>&1; then
-      sudo useradd --system --no-create-home --shell /usr/sbin/nologin winder-spa || true
+      sudo useradd --system --no-create-home --shell /usr/sbin/nologin winder-spa || echo "[09] user winder-spa exists" >&2
     fi
     # Fetch prebuilt, trusted SPA binary from GitHub Releases
     SPA_VER="${SPA_PQ_VERSION:-latest}"
@@ -171,9 +191,9 @@ if [[ "${SPA_ENABLE}" == "true" ]]; then
     curl -fsSL "$DL_SHA" -o "$tmpd/$ARCH_BIN.sha256"
     # Optional GPG verification of checksum file
     if [[ -n "${SPA_PQ_SIG_URL:-}" && -f /etc/spa/pubkey.gpg ]]; then
-      curl -fsSL "${SPA_PQ_SIG_URL}" -o "$tmpd/$ARCH_BIN.sha256.asc" || true
+      curl -fsSL "${SPA_PQ_SIG_URL}" -o "$tmpd/$ARCH_BIN.sha256.asc" || echo "[09] could not fetch signature; proceeding without GPG verify" >&2
       if [[ -s "$tmpd/$ARCH_BIN.sha256.asc" ]]; then
-        gpg --import /etc/spa/pubkey.gpg || true
+        gpg --import /etc/spa/pubkey.gpg || echo "[09] GPG import failed; checksum verification only" >&2
         gpg --verify "$tmpd/$ARCH_BIN.sha256.asc" "$tmpd/$ARCH_BIN.sha256"
       fi
     fi
@@ -204,7 +224,7 @@ if [[ "${SPA_ENABLE}" == "true" ]]; then
     sudo systemctl daemon-reload
     sudo systemctl enable --now spa-pq.service
     # Ensure fwknopd is stopped if previously installed
-    sudo systemctl disable --now fwknopd 2>/dev/null || true
+    sudo systemctl disable --now fwknopd 2>/dev/null || echo "[09] fwknopd not present" >&2
   else
     echo "[router] Legacy fwknop mode is no longer supported. Set SPA_MODE=pqkem."
     exit 1
@@ -233,30 +253,83 @@ sudo cp /opt/router/hardening/modprobe-blacklist.conf /etc/modprobe.d/blacklist-
 sudo cp /opt/router/hardening/profile.d-home-secnet.sh /etc/profile.d/99-home-secnet.sh
 sudo cp /opt/router/hardening/issue /etc/issue
 sudo cp /opt/router/hardening/issue /etc/issue.net
-sudo sysctl --system || true
+sudo sysctl --system || echo "[09] sysctl reload returned non-zero" >&2
 # Optional disable usb-storage
 if [[ "${DISABLE_USB_STORAGE}" == "true" ]]; then
   echo 'install usb-storage /bin/false' | sudo tee -a /etc/modprobe.d/blacklist-home-secnet.conf >/dev/null
 fi
 # SSH hardening
-ROUTER_ADMIN_USER="$ROUTER_ADMIN_USER" bash /opt/router/hardening/sshd_hardening.sh || true
+ROUTER_ADMIN_USER="$ROUTER_ADMIN_USER" bash /opt/router/hardening/sshd_hardening.sh || echo "[09] sshd hardening script returned non-zero" >&2
 
 # Install recommended packages
 sudo apt-get update -y
 sudo apt-get install -y libpam-tmpdir libpam-pwquality lynis rkhunter chkrootkit clamav-daemon clamav-freshclam
-sudo systemctl enable --now clamav-freshclam || true
+sudo systemctl enable --now clamav-freshclam || echo "[09] freshclam enable/start failed" >&2
 if [[ "${HARDEN_AUDITD}" == "true" ]]; then
   sudo apt-get install -y auditd audispd-plugins
-  sudo systemctl enable --now auditd || true
+  sudo systemctl enable --now auditd || echo "[09] auditd enable/start failed" >&2
 fi
 if [[ "${INSTALL_AIDE}" == "true" ]]; then
   sudo apt-get install -y aide
-  sudo aideinit || true
+  sudo aideinit || echo "[09] aideinit returned non-zero" >&2
 fi
 if [[ "${FAIL2BAN_ENABLE}" == "true" ]]; then
   sudo apt-get install -y fail2ban
   echo -e "[sshd]\nenabled = true\nmaxretry = 3\nbantime = 1h" | sudo tee /etc/fail2ban/jail.d/sshd.local >/dev/null
-  sudo systemctl enable --now fail2ban || true
+  sudo systemctl enable --now fail2ban || echo "[09] fail2ban enable/start failed" >&2
+
+# Ultralight-specific applies
+if [[ -f /etc/nftables.d/ultralight.nft ]]; then
+  # Create table if missing, then load our chains/sets without flushing global ruleset
+  sudo nft list tables | grep -q 'inet winder_ultralight' || sudo nft add table inet winder_ultralight || true
+  sudo nft -f /etc/nftables.d/ultralight.nft || echo "[09] applying ultralight nftables failed" >&2
+  # Load bogons set elements if present
+  if [[ -f /etc/nftables.d/bogons.nft ]]; then
+    sudo nft -f /etc/nftables.d/bogons.nft || echo "[09] applying bogons set failed" >&2
+  fi
+  # Ensure persistence via /etc/nftables.conf include
+  if [[ -f /etc/nftables.conf ]]; then
+    if ! grep -q '^include "/etc/nftables.d/ultralight.nft"' /etc/nftables.conf; then
+      echo 'include "/etc/nftables.d/ultralight.nft"' | sudo tee -a /etc/nftables.conf >/dev/null || true
+    fi
+    if [[ -f /etc/nftables.d/bogons.nft ]] && ! grep -q '^include "/etc/nftables.d/bogons.nft"' /etc/nftables.conf; then
+      echo 'include "/etc/nftables.d/bogons.nft"' | sudo tee -a /etc/nftables.conf >/dev/null || true
+    fi
+  fi
+  sudo systemctl enable --now nftables || echo "[09] enabling nftables failed" >&2
+fi
+
+if [[ "${DHCP_STACK:-dnsmasq}" == "dnsmasq" ]]; then
+  sudo apt-get update -y && sudo apt-get install -y dnsmasq
+  sudo install -m 0644 /opt/router/render/etc/dnsmasq.d/home-secnet.conf /etc/dnsmasq.d/home-secnet.conf || echo "[09] dnsmasq config install failed" >&2
+  sudo systemctl enable --now dnsmasq || echo "[09] enabling dnsmasq failed" >&2
+fi
+
+if [[ "${DNS_STACK:-unbound}" == "unbound" ]]; then
+  sudo apt-get update -y && sudo apt-get install -y unbound ca-certificates
+  sudo install -m 0644 /opt/router/render/etc/unbound/unbound.conf /etc/unbound/unbound.conf || echo "[09] unbound config install failed" >&2
+  sudo systemctl enable --now unbound || echo "[09] enabling unbound failed" >&2
+fi
+
+if [[ "${SHAPING_ENABLE:-true}" == "true" ]]; then
+  sudo install -m 0755 /opt/router/render/usr/local/sbin/ul_shaping.sh /usr/local/sbin/ul_shaping.sh || echo "[09] shaping helper install failed" >&2
+  /usr/local/sbin/ul_shaping.sh "${ROUTER_WAN_IF:-wan0}" "${SHAPING_EGRESS_KBIT:-0}" "${SHAPING_INGRESS_KBIT:-0}" || echo "[09] shaping helper returned non-zero" >&2
+fi
+
+# install ultralight health helper
+if [[ -f /opt/router/render/usr/local/sbin/ul_health.sh ]]; then
+  sudo install -m 0755 /opt/router/render/usr/local/sbin/ul_health.sh /usr/local/sbin/ul_health.sh || echo "[09] ul_health install failed" >&2
+fi
+
+if systemctl is-enabled --quiet suricata 2>/dev/null; then
+  sudo systemctl disable --now suricata || echo "[09] disabling suricata failed" >&2
+fi
+
+if [[ "${LOG_VERBOSITY:-normal}" == "minimal" ]]; then
+  sudo sed -i 's/^#*ForwardToSyslog=.*/ForwardToSyslog=no/g' /etc/systemd/journald.conf || true
+  sudo sed -i 's/^#*SystemMaxUse=.*/SystemMaxUse=200M/g' /etc/systemd/journald.conf || true
+  sudo systemctl restart systemd-journald || true
+fi
 fi
 
 # Harden login.defs minimally (UMASK and PASS policy)

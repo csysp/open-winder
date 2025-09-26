@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail; IFS=$'\n\t'
+# Purpose: Validate host OS and required tools; install missing deps on Debian/Ubuntu.
+# Inputs: environment variables: VERBOSE (optional)
+# Outputs: none
+# Side effects: May install packages via apt; exits non-zero on failure.
+
+usage() {
+  cat <<'USAGE'
+Usage: preflight.sh
+  Validates host (Linux + apt) and required tools. Installs missing packages when run as root.
+
+Environment:
+  VERBOSE=1   Enable verbose command logging
+USAGE
+}
+
+if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
+  usage; exit 0
+fi
 # shellcheck source=scripts/lib/log.sh
 # shellcheck source=home-secnet/scripts/lib/log.sh
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"
@@ -40,9 +58,13 @@ if (( ${#miss[@]} )); then
   log_warn "[00] Missing tools: ${miss[*]}"
   need_root
   log_info "[00] Installing required packages..."
-  apt-get update -y
+  if ! apt-get update -y; then
+    die 1 "[00] 'apt-get update' failed; fix networking/apt and rerun"
+  fi
   # Map common names to Debian packages
-  apt-get install -y curl rsync openssh-client nftables wireguard-tools gettext-base perl openssl || true
+  if ! apt-get install -y curl rsync openssh-client nftables wireguard-tools gettext-base perl openssl; then
+    die 1 "[00] Package installation failed; verify apt sources and rerun"
+  fi
 fi
 
 # Proxmox checks (optional but recommended)

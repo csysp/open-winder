@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail; IFS=$'\n\t'
+# Purpose: Apply Proxmox node firewall lockdown.
+# Inputs: .env via scripts/lib/env.sh; VERBOSE (optional)
+# Outputs: none
+# Side effects: Modifies pve-firewall rules.
+
+usage() {
+  cat <<'USAGE'
+Usage: apply_node_firewall.sh
+  Applies node-level firewall policy on Proxmox host.
+
+Environment:
+  VERBOSE=1   Enable verbose logging
+USAGE
+}
+
+if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
+  usage; exit 0
+fi
 # shellcheck source=scripts/lib/log.sh
 # shellcheck source=home-secnet/scripts/lib/log.sh
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"
@@ -47,10 +65,10 @@ cp -f "$tmp_groups" "/etc/pve/firewall/groups.cfg"
 
 # Enable firewall via Proxmox API and reload
 if command -v pvesh >/dev/null 2>&1; then
-  pvesh set "/cluster/firewall/options" --enable 1 >/dev/null 2>&1 || true
-  pvesh set "/nodes/$PVE_NODE/firewall/options" --enable 1 --policy_in DROP --policy_out ACCEPT >/dev/null 2>&1 || true
+  pvesh set "/cluster/firewall/options" --enable 1 >/dev/null 2>&1 || log_warn "[10] Could not enable cluster firewall options"
+  pvesh set "/nodes/$PVE_NODE/firewall/options" --enable 1 --policy_in DROP --policy_out ACCEPT >/dev/null 2>&1 || log_warn "[10] Could not enable node firewall or set policies"
 fi
 # Apply and activate firewall rules
-pve-firewall compile || true
-pve-firewall restart || true
+pve-firewall compile || log_warn "[10] pve-firewall compile failed"
+pve-firewall restart || log_warn "[10] pve-firewall restart failed"
 echo "[10] Applied node firewall (host.fw) and groups. Default inbound DROP enforced."

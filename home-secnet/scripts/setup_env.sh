@@ -1,5 +1,57 @@
 #!/usr/bin/env bash
 set -euo pipefail; IFS=$'\n\t'
+# Purpose: Interactive helper to create/update .env from .env.example.
+# Inputs: VERBOSE (optional)
+# Outputs: writes home-secnet/.env
+# Side effects: Creates/updates .env (idempotent)
+
+usage() {
+  cat <<'USAGE'
+Usage: setup_env.sh
+  Guides creation of home-secnet/.env from .env.example.
+
+Environment:
+  VERBOSE=1   Enable verbose logging
+USAGE
+}
+
+if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
+  usage; exit 0
+fi
+
+echo ""
+echo "Ultralight Mode targets old/tiny x86 and Pi-class devices."
+read -r -p "Enable Ultralight Mode (disable Suricata, use dnsmasq, minimal logs)? [y/N] " _ul
+if [[ "${_ul}" =~ ^[Yy]$ ]]; then
+  export ULTRALIGHT_MODE=true
+  export IDS_MODE=none
+  export DHCP_STACK=dnsmasq
+  export DNS_STACK=unbound
+  export NFT_GUARD_ENABLE=true
+  export NFT_SYNOPROXY_ENABLE=true
+  export NFT_RATE_LIMIT_ENABLE=true
+  export NFT_BOGONS_ENABLE=true
+  export NFT_DYNAMIC_BAN_ENABLE=false
+  export SHAPING_ENABLE=true
+  export LOG_VERBOSITY=minimal
+else
+  export ULTRALIGHT_MODE=false
+fi
+
+# Persist Ultralight choices to .env (append)
+{
+  echo "ULTRALIGHT_MODE=${ULTRALIGHT_MODE}"
+  echo "IDS_MODE=${IDS_MODE:-none}"
+  echo "DHCP_STACK=${DHCP_STACK:-dnsmasq}"
+  echo "DNS_STACK=${DNS_STACK:-unbound}"
+  echo "NFT_GUARD_ENABLE=${NFT_GUARD_ENABLE:-true}"
+  echo "NFT_SYNOPROXY_ENABLE=${NFT_SYNOPROXY_ENABLE:-true}"
+  echo "NFT_RATE_LIMIT_ENABLE=${NFT_RATE_LIMIT_ENABLE:-true}"
+  echo "NFT_BOGONS_ENABLE=${NFT_BOGONS_ENABLE:-true}"
+  echo "NFT_DYNAMIC_BAN_ENABLE=${NFT_DYNAMIC_BAN_ENABLE:-false}"
+  echo "SHAPING_ENABLE=${SHAPING_ENABLE:-true}"
+  echo "LOG_VERBOSITY=${LOG_VERBOSITY:-minimal}"
+} >> "$(dirname "$0")/../.env"
 # shellcheck source=scripts/lib/log.sh
 # shellcheck source=home-secnet/scripts/lib/log.sh
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"

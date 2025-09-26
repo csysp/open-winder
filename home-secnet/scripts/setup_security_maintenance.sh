@@ -25,13 +25,13 @@ setup_unattended() {
 APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
 EOF
-  dpkg-reconfigure -f noninteractive unattended-upgrades || true
+  dpkg-reconfigure -f noninteractive unattended-upgrades || log_warn "[11] unattended-upgrades reconfigure failed"
 }
 
 setup_host_security_units() {
   echo "[11] Installing host scanners (lynis, rkhunter, chkrootkit, clamav)..."
   apt-get install -y lynis rkhunter chkrootkit clamav-daemon clamav-freshclam
-  systemctl enable --now clamav-freshclam || true
+  systemctl enable --now clamav-freshclam || log_warn "[11] freshclam enable/start failed"
 
   mkdir -p /usr/local/sbin
   cat > /usr/local/sbin/hsn-daily-update.sh <<'EOS'
@@ -40,10 +40,10 @@ set -euo pipefail
 LOGDIR=/var/log/home-secnet
 mkdir -p "$LOGDIR"
 date >> "$LOGDIR/host-daily-update.log"
-apt-get update -y >> "$LOGDIR/host-daily-update.log" 2>&1 || true
-unattended-upgrade -d >> "$LOGDIR/host-daily-update.log" 2>&1 || true
-apt-get autoremove -y >> "$LOGDIR/host-daily-update.log" 2>&1 || true
-apt-get autoclean -y >> "$LOGDIR/host-daily-update.log" 2>&1 || true
+apt-get update -y >> "$LOGDIR/host-daily-update.log" 2>&1 || echo "[11] apt update failed" >> "$LOGDIR/host-daily-update.log"
+unattended-upgrade -d >> "$LOGDIR/host-daily-update.log" 2>&1 || echo "[11] unattended-upgrade failed" >> "$LOGDIR/host-daily-update.log"
+apt-get autoremove -y >> "$LOGDIR/host-daily-update.log" 2>&1 || echo "[11] apt autoremove failed" >> "$LOGDIR/host-daily-update.log"
+apt-get autoclean -y >> "$LOGDIR/host-daily-update.log" 2>&1 || echo "[11] apt autoclean failed" >> "$LOGDIR/host-daily-update.log"
 EOS
   chmod +x /usr/local/sbin/hsn-daily-update.sh
 
@@ -52,7 +52,7 @@ EOS
 set -euo pipefail
 LOGDIR=/var/log/lynis
 mkdir -p "$LOGDIR"
-lynis audit system --quick --auditor "home-secnet" --logfile "$LOGDIR/host-lynis.log" || true
+lynis audit system --quick --auditor "home-secnet" --logfile "$LOGDIR/host-lynis.log" || echo "[11] lynis audit failed" >> "$LOGDIR/host-lynis.log"
 EOS
   chmod +x /usr/local/sbin/hsn-daily-lynis.sh
 
@@ -61,10 +61,10 @@ EOS
 set -euo pipefail
 LOGDIR=/var/log/home-secnet
 mkdir -p "$LOGDIR"
-rkhunter --update || true
-rkhunter --propupd || true
-rkhunter --check --sk >> "$LOGDIR/host-rkhunter.log" 2>&1 || true
-chkrootkit >> "$LOGDIR/host-chkrootkit.log" 2>&1 || true
+rkhunter --update || echo "[11] rkhunter update failed" >> "$LOGDIR/host-rkhunter.log"
+rkhunter --propupd || echo "[11] rkhunter propupd failed" >> "$LOGDIR/host-rkhunter.log"
+rkhunter --check --sk >> "$LOGDIR/host-rkhunter.log" 2>&1 || echo "[11] rkhunter check failed" >> "$LOGDIR/host-rkhunter.log"
+chkrootkit >> "$LOGDIR/host-chkrootkit.log" 2>&1 || echo "[11] chkrootkit failed" >> "$LOGDIR/host-chkrootkit.log"
 EOS
   chmod +x /usr/local/sbin/hsn-daily-rootkit.sh
 
@@ -73,8 +73,8 @@ EOS
 set -euo pipefail
 LOGDIR=/var/log/clamav
 mkdir -p "$LOGDIR"
-freshclam || true
-clamscan -r --infected --log="$LOGDIR/host-scan.log" /etc /bin /sbin /usr /var /opt || true
+freshclam || echo "[11] freshclam failed" >> "$LOGDIR/host-scan.log"
+clamscan -r --infected --log="$LOGDIR/host-scan.log" /etc /bin /sbin /usr /var /opt || echo "[11] clamscan failed" >> "$LOGDIR/host-scan.log"
 EOS
   chmod +x /usr/local/sbin/hsn-daily-malware.sh
 
@@ -176,7 +176,7 @@ EOS
 
 setup_rsyslog_forward() {
   echo "[11] Skipping host rsyslog remote forwarding (logging VM removed)"
-  rm -f /etc/rsyslog.d/90-remote.conf 2>/dev/null || true
+  rm -f /etc/rsyslog.d/90-remote.conf 2>/dev/null || log_warn "[11] no existing rsyslog remote config"
 }
 
 echo "[11] Email alerts disabled; skipping msmtp/mail configuration"
@@ -190,20 +190,20 @@ echo "[11] Host daily maintenance configured."
 # Configure Router VM packages for maintenance
 ROUTER_IP="${ROUTER_IP:-}"
 if [[ -z "$ROUTER_IP" ]]; then
-  echo "[11] Router IP not set; if you want to install packages on Router now, export ROUTER_IP and re-run." || true
+  echo "[11] Router IP not set; if you want to install packages on Router now, export ROUTER_IP and re-run."
   exit 0
 fi
 
 echo "[11] Installing packages and enabling timers on Router VM ($ROUTER_IP)..."
-ssh -o StrictHostKeyChecking=no ${ROUTER_ADMIN_USER}@${ROUTER_IP} bash -s <<'EOSSH'
+ssh -o StrictHostKeyChecking=accept-new ${ROUTER_ADMIN_USER}@${ROUTER_IP} bash -s <<'EOSSH'
 set -euo pipefail
 sudo apt-get update -y
 sudo apt-get install -y unattended-upgrades apt-listchanges lynis rkhunter chkrootkit clamav-daemon clamav-freshclam
-sudo systemctl enable --now clamav-freshclam || true
+sudo systemctl enable --now clamav-freshclam || log_warn "[11] Router freshclam enable/start failed"
 echo 'APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";' | sudo tee /etc/apt/apt.conf.d/20auto-upgrades >/dev/null
 sudo systemctl daemon-reload
-sudo systemctl enable --now home-secnet-daily-update.timer home-secnet-daily-lynis.timer home-secnet-daily-rootkit.timer home-secnet-daily-malware.timer || true
+sudo systemctl enable --now home-secnet-daily-update.timer home-secnet-daily-lynis.timer home-secnet-daily-rootkit.timer home-secnet-daily-malware.timer || log_warn "[11] enabling maintenance timers failed"
 EOSSH
 
 echo "[11] Router maintenance configured. Logging VM removed from stack."

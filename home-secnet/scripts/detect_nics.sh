@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail; IFS=$'\n\t'
+# Purpose: Detect NICs and suggest Winder topology.
+# Inputs: VERBOSE (optional)
+# Outputs: suggested mapping and notes
+# Side effects: none
+
+usage() {
+  cat <<'USAGE'
+Usage: detect_nics.sh
+  Detects NICs and prints suggested WAN/LAN assignments.
+
+Environment:
+  VERBOSE=1   Enable verbose logging
+USAGE
+}
+
+if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
+  usage; exit 0
+fi
 # shellcheck source=scripts/lib/log.sh
 # shellcheck source=home-secnet/scripts/lib/log.sh
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"

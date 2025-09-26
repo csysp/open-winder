@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail; IFS=$'\n\t'
+# Purpose: Create the Router VM on Proxmox.
+# Inputs: .env via scripts/lib/env.sh; VERBOSE (optional)
+# Outputs: none
+# Side effects: Creates VM and attaches disks/network.
+
+usage() {
+  cat <<'USAGE'
+Usage: create_router_vm.sh
+  Creates Router VM using Proxmox qm and .env settings.
+
+Environment:
+  VERBOSE=1   Enable verbose logging
+USAGE
+}
+
+if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
+  usage; exit 0
+fi
 # shellcheck source=scripts/lib/log.sh
 # shellcheck source=home-secnet/scripts/lib/log.sh
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"

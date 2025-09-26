@@ -44,7 +44,7 @@ checks:
 	bash tests/verify_spa.sh 
 
 clean:
-	rm -rf render/ clients/
+	rm -rf home-secnet/render/ home-secnet/clients/
 
 fmt:
 	@if command -v cargo >/dev/null 2>&1; then \
@@ -64,3 +64,8 @@ clippy:
 rotate-wg-key:
 	@if [ -z "$(peer)" ]; then echo "Usage: make rotate-wg-key peer=<peer_name>"; exit 1; fi
 	bash scripts/rotate_wg_key.sh --peer "$(peer)"
+.PHONY: ultralight
+ultralight:
+	@echo "Rendering Ultralight Mode..."
+	bash scripts/render_router_configs.sh
+	bash scripts/apply_router_configs.sh

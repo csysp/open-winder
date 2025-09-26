@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail; IFS=$'\n\t'
+# Purpose: Configure Proxmox bridges for Winder.
+# Inputs: .env via scripts/lib/env.sh; VERBOSE (optional)
+# Outputs: none
+# Side effects: Configures network bridges on host.
+
+usage() {
+  cat <<'USAGE'
+Usage: configure_bridges.sh
+  Creates/updates Proxmox bridges according to .env.
+
+Environment:
+  VERBOSE=1   Enable verbose logging
+USAGE
+}
+
+if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
+  usage; exit 0
+fi
 # shellcheck source=scripts/lib/log.sh
 # shellcheck source=home-secnet/scripts/lib/log.sh
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"
@@ -54,6 +72,6 @@ fi
 
 echo "[04] Bridge config written. Restarting networking..."
 if systemctl is-active --quiet networking; then
-  systemctl restart networking || true
+  systemctl restart networking || log_warn "[04] networking restart failed; verify bridge config"
 fi
 echo "[04] Done."
