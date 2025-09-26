@@ -36,7 +36,8 @@ jobs:
 
   release:
     name: Release SPA artifacts
-    if: startsWith(github.ref, 'refs/tags/')
+    # Allow tag builds and manual/branch builds for testing
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/main')
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -57,6 +58,10 @@ jobs:
           mkdir -p dist
           cp home-secnet/router/spa-pq/target/release/home-secnet-spa-pq dist/
           (cd dist && sha256sum home-secnet-spa-pq > home-secnet-spa-pq.sha256)
+      - name: Destroy build artifacts (workspace cleanup)
+        if: ${{ success() }}
+        run: |
+          rm -rf home-secnet/router/spa-pq/target
       - name: Upload release artifacts
         uses: softprops/action-gh-release@v2
         with:

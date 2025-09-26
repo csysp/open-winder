@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail; IFS=$'\n\t'
+# shellcheck source=home-secnet/scripts/lib/log.sh
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"; [[ -f "$LIB_PATH" ]] && source "$LIB_PATH"
 
 log_info "[11] Setting up daily updates and security scans (host + VMs)..."

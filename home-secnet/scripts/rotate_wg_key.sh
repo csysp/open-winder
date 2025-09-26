@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail; IFS=$'\n\t'
+# shellcheck source=home-secnet/scripts/lib/log.sh
 LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"; [[ -f "$LIB_PATH" ]] && source "$LIB_PATH"
 
 usage() {
@@ -48,6 +49,15 @@ umask 077
 NEW_PRIV=$(wg genkey)
 NEW_PUB=$(printf '%s' "$NEW_PRIV" | wg pubkey)
 
+# Confirm unless --yes provided
+if [[ "$YES" -ne 1 ]]; then
+  read -r -p "Rotate key for peer '$PEER'? [y/N]: " ans
+  case "$ans" in
+    y|Y) ;; 
+    *) log_info "Aborted."; exit 0;;
+  esac
+fi
+
 # Update server conf atomically
 TMP_SERVER="${SERVER_CONF}.tmp"
 awk -v peer="$PEER" -v pub="$NEW_PUB" '
@@ -73,4 +83,3 @@ cp -a "$CLIENT_CONF" "$ARCHIVE_DIR/${PEER}-$(date +%Y%m%d%H%M%S).conf"
 log_info "Rotated peer '$PEER'. Distribute updated client config: $CLIENT_CONF"
 
 echo "NOTE: Apply updated server config on the router (wg setconf wg0 /etc/wireguard/wg0.conf) and restart wg if needed."
-
