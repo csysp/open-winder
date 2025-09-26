@@ -61,3 +61,6 @@ clippy:
 	else \
 		echo "cargo not found; skipping clippy"; \
 	fi
+rotate-wg-key:
+	@if [ -z "$(peer)" ]; then echo "Usage: make rotate-wg-key peer=<peer_name>"; exit 1; fi
+	bash scripts/rotate_wg_key.sh --peer "$(peer)"

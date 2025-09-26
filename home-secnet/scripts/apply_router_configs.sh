@@ -195,7 +195,7 @@ if [[ "${SPA_ENABLE}" == "true" ]]; then
 fi
 
 sudo netplan apply
-sudo nft -f /etc/nftables.conf || true
+sudo nft -f /etc/nftables.conf
 sudo systemctl enable --now nftables
 sudo systemctl enable --now isc-dhcp-server
 if [[ -f /etc/unbound/unbound.conf ]]; then

@@ -34,6 +34,36 @@ jobs:
           cargo build --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --release
           cargo test --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --all 
 
+  release:
+    name: Release SPA artifacts
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Build SPA server
+        working-directory: home-secnet/router/spa-pq
+        run: |
+          cargo build --release
+      - name: Package artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp home-secnet/router/spa-pq/target/release/home-secnet-spa-pq dist/
+          (cd dist && sha256sum home-secnet-spa-pq > home-secnet-spa-pq.sha256)
+      - name: Upload release artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/home-secnet-spa-pq
+            dist/home-secnet-spa-pq.sha256
+
   shell:
     name: Shell lint
     runs-on: ubuntu-latest
