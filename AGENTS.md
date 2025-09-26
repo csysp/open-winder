@@ -20,7 +20,8 @@ Repository Conventions
   - `home-secnet/scripts/` — orchestration and helpers; pure bash.
   - `home-secnet/router/` — golden config templates, cloud-init, rendered outputs go to `home-secnet/render/` (ignored by git).
   - `home-secnet/tests/` — non-destructive verifiers and health checks.
-  - `home-secnet/.env.example` — documented environment template. Never commit a real `.env`.
+  - `home-secnet/.env.example` - documented environment template. Never commit a real `.env`.
+  - Normalize line endings to LF only throughout the repo; `.gitattributes` enforces this.
 - Artifacts
   - Rendered content must go under `home-secnet/render/` and clients under `home-secnet/clients/` (both ignored).
   - Temporary work should be under a unique path in `/tmp` (on Linux hosts) such as `/tmp/winder-<script>-<pid>`.
@@ -63,6 +64,7 @@ Makefile Conventions
 - Declare `.PHONY` for non-file targets.
 - Group flows into coarse targets: `all`, `router`, `checks`, and avoid hidden side effects.
 - Keep environment passing explicit; read `.env` in scripts rather than parsing in Make.
+ - Pre-release period: installers may point to main; once tagging resumes, pin to tags and validate checksums.
  - Provide an `ultralight` target to deploy minimal stack. Do not auto-switch targets based on `.env`; keep user intent explicit.
 
 Templates and Configuration
@@ -125,7 +127,7 @@ Docs Consistency Guide
   - New/changed scripts or Make targets → reflect in runbook steps and Make Targets section.
   - NFTables or systemd changes → ensure chain names, flags, and unit args match in `docs/SPA_PQ.md`.
 - Paths in docs must be exact and clickable (use repo‑relative paths like `home-secnet/scripts/...`).
-- CI notes in `README.md` must reflect current workflows (fmt, clippy, shellcheck, secrets scan, debug).
+- CI notes in `README.md` must reflect current workflows (fmt, clippy, shellcheck, secrets scan, debug). Include a clear pre-alpha notice while releases are paused and steer to main installer.
 - PR checklist (copy into PR description):
   - [ ] Updated `.env.example` and documented new variables.
   - [ ] Updated runbook for any script/Make changes.
