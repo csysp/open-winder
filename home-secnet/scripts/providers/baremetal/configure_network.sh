@@ -30,10 +30,10 @@ if ! has netplan; then
   exit 1
 fi
 
-mapfile -t nics < <(ls -1 /sys/class/net | grep -vE '^(lo|wg|docker|veth)' | sort)
+mapfile -t nics < <(for d in /sys/class/net/*; do b=${d##*/}; [[ "$b" =~ ^(lo|wg|docker|veth) ]] && continue; printf '%s\n' "$b"; done | sort)
 select_if() {
   local prompt="$1"; shift
-  local -n out=$1
+  local __out_var="$1"; shift || true
   echo "$prompt" >&2
   local i=1
   for nic in "${nics[@]}"; do echo "  [$i] $nic"; ((i++)); done
@@ -41,7 +41,7 @@ select_if() {
   while true; do
     read -r -p "Select [1-${#nics[@]}]: " sel
     if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel>=1 && sel<=${#nics[@]} )); then
-      out=${nics[$((sel-1))]}
+      printf -v "$__out_var" '%s' "${nics[$((sel-1))]}"
       break
     fi
   done
