@@ -1,7 +1,7 @@
 SPA: Post-Quantum KEM + HMAC
 
 Overview
-- PQ-KEM SPA is the default SPA mode in Winder. The control-plane SPA daemon gates WireGuard UDP by inserting a temporary nftables allow rule after a valid post-quantum knock.
+- PQ-KEM SPA is the default SPA mode in open-winder. The control-plane SPA daemon gates WireGuard UDP by inserting a temporary nftables allow rule after a valid post-quantum knock.
 - Uses ML-KEM/Kyber-768 for key agreement and HMAC-SHA256 for authentication over a short-lived window.
 - Data plane (WireGuard/Hysteria2) remains unchanged.
 
@@ -64,7 +64,7 @@ Operational Checks
   - `nft list set inet filter wg_spa_allow_set`
 - Time sync: ensure NTP is running on router and clients.
 - SPA port: verify the UDP port is listening: `ss -ulnp | grep :$SPA_PQ_PORT`
-- Logs: journalctl -u winder-spa-pq -o cat | jq '.'
+- Logs: journalctl -u open-winder-spa-pq -o cat | jq '.' (unit name may remain home-secnet-spa-pq depending on your render)
 
 Systemd Install Flow (Template)
 1. Copy sources to router host: `/opt/router/spa-pq-src`
@@ -74,8 +74,8 @@ Systemd Install Flow (Template)
    - `/etc/spa/kem_priv.bin` (0600), `/etc/spa/kem_pub.bin` (0644), PSK file (0600)
 4. Ensure nftables objects exist (ExecStartPre in unit handles this by default)
 5. Render unit from template and enable:
-   - `envsubst < home-secnet/router/systemd/spa-pq/spa-pq.service.template | sudo tee /etc/systemd/system/winder-spa-pq.service`
-   - `sudo systemctl daemon-reload && sudo systemctl enable --now winder-spa-pq`
+   - `envsubst < home-secnet/router/systemd/spa-pq/spa-pq.service.template | sudo tee /etc/systemd/system/open-winder-spa-pq.service`
+   - `sudo systemctl daemon-reload && sudo systemctl enable --now open-winder-spa-pq`
 
 Testing
 - Unit tests cover HMAC composition and time skew checks.
