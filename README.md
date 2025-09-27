@@ -119,6 +119,7 @@ Security Best Practices
 - SPA: PQ‑KEM (Kyber‑768 + HMAC) defaults on; see `docs/SPA_PQ.md`.
 - nftables: default‑deny; chain names match templates in `home-secnet/router/configs/`.
 - Scanners (optional): set `SECURITY_SCANNERS_ENABLE=true` in `home-secnet/.env`, then run `make security-enable` to copy scripts and enable timers on the router.
+- Traffic shaping: enable by setting `SHAPING_EGRESS_KBIT` (and optionally `SHAPING_INGRESS_KBIT`) in `.env`. Scripts prefer CAKE and fall back to HTB+fq_codel. DSCP can be enabled via `SHAPING_DSCP_ENABLE=true`.
 
 Proxmox Provider (Appendix)
 - Node firewall groups and rules: `home-secnet/proxmox/`.

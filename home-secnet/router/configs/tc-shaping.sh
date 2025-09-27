@@ -1,14 +1,86 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euo pipefail; IFS=$'\n\t'
 
-# Simple fq_codel on VLAN subinterfaces; optional rate limit via tbf if RATE env provided per VLAN
+# Hardened traffic shaping for VLAN setups
+# - Egress shaping on WAN using CAKE (preferred) or HTB+fq_codel fallback
+# - Optional ingress shaping via IFB
+# - fq_codel on LAN subinterfaces for local buffer control
+#
+# Inputs (env):
+#   ROUTER_WAN_IF, ROUTER_LAN_IF
+#   VLAN_TRUSTED, VLAN_IOT, VLAN_GUEST, VLAN_LAB
+#   SHAPING_EGRESS_KBIT  (required to enable egress shaping)
+#   SHAPING_INGRESS_KBIT (optional; enables IFB ingress shaping)
+#   DSCP_ENABLE=false    (optional; if true, use diffserv4)
+#   DRY_RUN=1            (optional; print commands only)
 
-IFACES=("${ROUTER_LAN_IF}.${VLAN_TRUSTED}" "${ROUTER_LAN_IF}.${VLAN_IOT}" "${ROUTER_LAN_IF}.${VLAN_GUEST}" "${ROUTER_LAN_IF}.${VLAN_LAB}")
+run() { if [[ "${DRY_RUN:-0}" == "1" ]]; then echo "+ $*"; else eval "$*"; fi; }
+die() { echo "[tc] $*" >&2; exit 1; }
 
+command -v tc >/dev/null 2>&1 || die "tc not found"
+
+WAN="${ROUTER_WAN_IF:-}"
+LAN="${ROUTER_LAN_IF:-}"
+[[ -n "$WAN" && -n "$LAN" ]] || die "ROUTER_WAN_IF/ROUTER_LAN_IF required"
+
+IFACES=("${LAN}.${VLAN_TRUSTED}" "${LAN}.${VLAN_IOT}" "${LAN}.${VLAN_GUEST}" "${LAN}.${VLAN_LAB}")
+
+EGRESS_KBIT="${SHAPING_EGRESS_KBIT:-0}"
+INGRESS_KBIT="${SHAPING_INGRESS_KBIT:-0}"
+DIFFSERV_ARG="besteffort"
+[[ "${DSCP_ENABLE:-false}" == "true" ]] && DIFFSERV_ARG="diffserv4"
+
+has_cake=false
+if lsmod 2>/dev/null | grep -q '^sch_cake'; then has_cake=true; fi
+if [[ "$has_cake" == false ]]; then
+  run modprobe sch_cake 2>/dev/null || true
+  lsmod | grep -q '^sch_cake' && has_cake=true || has_cake=false
+fi
+
+# Egress shaping on WAN
+if [[ "$EGRESS_KBIT" =~ ^[0-9]+$ && "$EGRESS_KBIT" -gt 0 ]]; then
+  echo "[tc] Configure egress on $WAN (${EGRESS_KBIT}kbit)"
+  if [[ "$has_cake" == true ]]; then
+    run tc qdisc replace dev "$WAN" root cake bandwidth ${EGRESS_KBIT}kbit ${DIFFSERV_ARG} nat
+  else
+    run tc qdisc replace dev "$WAN" root handle 1: htb default 10
+    run tc class replace dev "$WAN" parent 1: classid 1:10 htb rate ${EGRESS_KBIT}kbit ceil ${EGRESS_KBIT}kbit
+    run tc qdisc replace dev "$WAN" parent 1:10 handle 10: fq_codel ecn
+  fi
+else
+  echo "[tc] Egress shaping disabled (SHAPING_EGRESS_KBIT not set)"
+  run tc qdisc del dev "$WAN" root 2>/dev/null || true
+fi
+
+# Ingress shaping via IFB (optional)
+if [[ "$INGRESS_KBIT" =~ ^[0-9]+$ && "$INGRESS_KBIT" -gt 0 ]]; then
+  echo "[tc] Configure ingress on $WAN via ifb0 (${INGRESS_KBIT}kbit)"
+  run modprobe ifb || die "missing ifb"
+  run ip link add ifb0 type ifb 2>/dev/null || true
+  run ip link set dev ifb0 up
+  run tc qdisc replace dev "$WAN" handle ffff: ingress
+  run tc filter replace dev "$WAN" parent ffff: matchall action mirred egress redirect dev ifb0
+  if [[ "$has_cake" == true ]]; then
+    run tc qdisc replace dev ifb0 root cake bandwidth ${INGRESS_KBIT}kbit ${DIFFSERV_ARG}
+  else
+    run tc qdisc replace dev ifb0 root handle 1: htb default 10
+    run tc class replace dev ifb0 parent 1: classid 1:10 htb rate ${INGRESS_KBIT}kbit ceil ${INGRESS_KBIT}kbit
+    run tc qdisc replace dev ifb0 parent 1:10 handle 10: fq_codel ecn
+  fi
+else
+  echo "[tc] Ingress shaping disabled"
+  run tc qdisc del dev "$WAN" ingress 2>/dev/null || true
+  run tc qdisc del dev ifb0 root 2>/dev/null || true
+  run ip link del ifb0 2>/dev/null || true
+fi
+
+# fq_codel on VLAN subinterfaces
 for IF in "${IFACES[@]}"; do
-  echo "Configuring fq_codel on $IF"
-  tc qdisc replace dev "$IF" root fq_codel || true
+  echo "[tc] fq_codel on $IF"
+  run tc qdisc replace dev "$IF" root fq_codel ecn
 done
 
-echo "Done tc shaping."
-
+echo "[tc] qdisc summary"
+tc -s qdisc show dev "$WAN" || true
+for IF in "${IFACES[@]}"; do tc -s qdisc show dev "$IF" || true; done
+tc -s qdisc show dev ifb0 2>/dev/null || true
