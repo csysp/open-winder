@@ -8,7 +8,7 @@ set -euo pipefail; IFS=$'\n\t'
 
 usage() {
   cat <<'USAGE'
-Usage: install_open_winder.sh [--ultralight]
+Usage: install_winder.sh [--ultralight]
   Downloads v0.1.0 (via tarball), runs preflight and setup, then deploys router.
 
 Options:

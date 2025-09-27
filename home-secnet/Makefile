@@ -5,7 +5,7 @@ SHELL := /bin/bash
 help:
 	@echo "Targets: all | router | checks | clean"
 	@echo "Dev: fmt | clippy"
- 	@echo "Utils: detect-hypervisor"
+	@echo "Utils: detect-hypervisor"
 
 all: spa
 	bash scripts/preflight.sh

@@ -1,5 +1,5 @@
 [Unit]
-Description=open-winder PQ-KEM SPA Daemon
+Description=Home-SecNet PQ-KEM SPA Daemon
 After=network-online.target nftables.service
 Wants=network-online.target nftables.service
 ConditionPathExists=/usr/sbin/nft
@@ -17,8 +17,8 @@ ExecStart=/usr/local/bin/home-secnet-spa-pq run \
   --window-secs ${SPA_PQ_WINDOW_SECS} \
   --nft-table inet \
   --nft-chain wg_spa_allow
-User=open-winder-spa
-Group=open-winder-spa
+User=winder-spa
+Group=winder-spa
 AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
 CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
 NoNewPrivileges=true
