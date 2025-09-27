@@ -73,6 +73,26 @@ set +u
 [[ -f "$ENV_FILE" ]] && source "$ENV_FILE"
 set -u
 
+# Provider selection (baremetal default; prefer proxmox if detected, ask to confirm)
+detect_proxmox() {
+  command -v qm >/dev/null 2>&1 && command -v pve-firewall >/dev/null 2>&1
+}
+
+if [[ -z "${HOST_PROVIDER:-}" ]]; then
+  if detect_proxmox; then
+    read -r -p "Proxmox tools detected. Use Proxmox provider? [Y/n] " _p
+    if [[ "${_p:-Y}" =~ ^([Yy]|)$ ]]; then
+      HOST_PROVIDER=proxmox
+    else
+      HOST_PROVIDER=baremetal
+    fi
+  else
+    HOST_PROVIDER=baremetal
+  fi
+  export HOST_PROVIDER
+  update_env HOST_PROVIDER "${HOST_PROVIDER}"
+fi
+
 # Apply requested default behaviors in-memory if not set
 ensure_default WRAP_MODE hysteria2
 ensure_default DNS_STACK unbound
