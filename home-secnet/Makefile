@@ -13,7 +13,11 @@ all: spa
 	$(MAKE) host
 	bash scripts/render_router_configs.sh
 	bash scripts/apply_router_configs.sh
-	bash scripts/setup_security_maintenance.sh
+	@if grep -q '^SECURITY_SCANNERS_ENABLE=true' .env 2>/dev/null; then \
+	  bash scripts/setup_security_maintenance.sh; \
+	else \
+	  echo "[security] scanners disabled (set SECURITY_SCANNERS_ENABLE=true to enable)"; \
+	fi
 	bash scripts/verify_deploy.sh
 
 spa:
@@ -29,13 +33,20 @@ router: spa
 	$(MAKE) host
 	bash scripts/render_router_configs.sh
 	bash scripts/apply_router_configs.sh
+ 	@if grep -q '^SECURITY_SCANNERS_ENABLE=true' .env 2>/dev/null; then \
+	  bash scripts/setup_security_maintenance.sh; \
+	else \
+	  echo "[security] scanners disabled (set SECURITY_SCANNERS_ENABLE=true to enable)"; \
+	fi
 
 checks:
+	bash scripts/env_doctor.sh 
 	bash tests/verify_wg.sh 
 	bash tests/verify_dns.sh 
 	bash tests/verify_isolation.sh 
 	bash tests/verify_ids.sh 
 	bash tests/verify_spa.sh 
+	bash tests/spa_unit.sh 
 
 clean:
 	rm -rf home-secnet/render/ home-secnet/clients/
@@ -65,3 +76,18 @@ ultralight:
 	bash scripts/apply_router_configs.sh
 host:
 	bash scripts/configure_host.sh
+
+.PHONY: security-enable
+security-enable:
+	@if ! grep -q '^SECURITY_SCANNERS_ENABLE=true' .env 2>/dev/null; then \
+	  echo "Set SECURITY_SCANNERS_ENABLE=true in .env first"; exit 1; \
+	fi
+	@echo "[security] Copying optional scanners to router and enabling timers..."
+	@bash -c 'set -euo pipefail; IFS="\n\t"; \
+	  ROOT_DIR="$$(pwd)"; \
+	  source home-secnet/.env; \
+	  if [ -z "$${ROUTER_IP:-}" ]; then echo "ROUTER_IP not set in .env"; exit 1; fi; \
+	  ssh -o StrictHostKeyChecking=accept-new $${ROUTER_ADMIN_USER}@$${ROUTER_IP} "sudo install -d -m 0755 /opt/router/security"; \
+	  scp -o StrictHostKeyChecking=accept-new home-secnet/tools/optional-security/*.sh $${ROUTER_ADMIN_USER}@$${ROUTER_IP}:/tmp/; \
+	  ssh -o StrictHostKeyChecking=accept-new $${ROUTER_ADMIN_USER}@$${ROUTER_IP} "sudo mv /tmp/*.sh /opt/router/security/ && sudo chmod +x /opt/router/security/*.sh && sudo systemctl daemon-reload && sudo systemctl enable --now home-secnet-daily-update.timer home-secnet-daily-lynis.timer home-secnet-daily-rootkit.timer home-secnet-daily-malware.timer"; \
+	  echo "[security] Enabled";'

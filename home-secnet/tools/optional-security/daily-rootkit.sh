@@ -5,12 +5,12 @@ mkdir -p "$LOGDIR"
 RKLOG="$LOGDIR/rkhunter.log"
 CKLOG="$LOGDIR/chkrootkit.log"
 if command -v rkhunter >/dev/null 2>&1; then
-  rkhunter --update || true
-  rkhunter --propupd || true
-  rkhunter --check --sk >> "$RKLOG" 2>&1 || true
+  if ! rkhunter --update; then echo "[router][rkhunter] update failed" >> "$RKLOG"; fi
+  if ! rkhunter --propupd; then echo "[router][rkhunter] propupd failed" >> "$RKLOG"; fi
+  if ! rkhunter --check --sk >> "$RKLOG" 2>&1; then echo "[router][rkhunter] check failed" >> "$RKLOG"; fi
 fi
 if command -v chkrootkit >/dev/null 2>&1; then
-  chkrootkit >> "$CKLOG" 2>&1 || true
+  if ! chkrootkit >> "$CKLOG" 2>&1; then echo "[router][chkrootkit] failed" >> "$CKLOG"; fi
 fi
 
 ALERT_SH="/opt/router/security/alert-mail.sh"

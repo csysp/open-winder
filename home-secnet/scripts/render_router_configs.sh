@@ -458,7 +458,7 @@ dhcp-authoritative
 EOF
 fi
 
-if [[ "${DNS_STACK:-unbound}" == "unbound" ]]; then
+if [[ "${DNS_STACK:-adguard}" == "unbound" ]]; then
   mkdir -p "$OUT_ROOT/etc/unbound"
   cat > "$OUT_ROOT/etc/unbound/unbound.conf" <<'EOF'
 server:

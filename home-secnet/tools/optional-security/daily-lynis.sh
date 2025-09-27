@@ -3,7 +3,9 @@ set -euo pipefail
 LOGDIR=/var/log/lynis
 mkdir -p "$LOGDIR"
 OUT="$LOGDIR/lynis.log"
-lynis audit system --quick --auditor "home-secnet" --logfile "$OUT" || true
+if ! lynis audit system --quick --auditor "home-secnet" --logfile "$OUT"; then
+  echo "[router][lynis] audit failed" >> "$OUT"
+fi
 
 ALERT_SH="/opt/router/security/alert-mail.sh"
 if [[ -x "$ALERT_SH" ]]; then

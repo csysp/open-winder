@@ -116,8 +116,10 @@ fi
 
 # Install daily security maintenance timers
 sudo install -d -m 0755 /opt/router/security
-sudo cp -a /opt/router/systemd/security/*.sh /opt/router/security/
-sudo chmod +x /opt/router/security/*.sh
+if [[ -d /opt/router/systemd/security && -n "$(ls -A /opt/router/systemd/security 2>/dev/null)" ]]; then
+  sudo cp -a /opt/router/systemd/security/*.sh /opt/router/security/
+  sudo chmod +x /opt/router/security/*.sh
+fi
 sudo cp -a /opt/router/systemd/security/*.service /etc/systemd/system/
 sudo cp -a /opt/router/systemd/security/*.timer /etc/systemd/system/
 sudo cp -a /opt/router/systemd/adguard/adguardhome.service /etc/systemd/system/
@@ -311,7 +313,7 @@ if [[ "${DHCP_STACK:-dnsmasq}" == "dnsmasq" ]]; then
   sudo systemctl enable --now dnsmasq || echo "[09] enabling dnsmasq failed" >&2
 fi
 
-if [[ "${DNS_STACK:-unbound}" == "unbound" ]]; then
+if [[ "${DNS_STACK:-adguard}" == "unbound" ]]; then
   sudo apt-get update -y && sudo apt-get install -y unbound ca-certificates
   sudo install -m 0644 /opt/router/render/etc/unbound/unbound.conf /etc/unbound/unbound.conf || echo "[09] unbound config install failed" >&2
   sudo systemctl enable --now unbound || echo "[09] enabling unbound failed" >&2

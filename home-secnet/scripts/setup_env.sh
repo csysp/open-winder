@@ -95,7 +95,7 @@ fi
 
 # Apply requested default behaviors in-memory if not set
 ensure_default WRAP_MODE hysteria2
-ensure_default DNS_STACK unbound
+ensure_default DNS_STACK adguard
 ensure_default SPA_ENABLE true
 ensure_default DOUBLE_HOP_ENABLE true
 
@@ -144,7 +144,7 @@ fi
 update_env ULTRALIGHT_MODE "${ULTRALIGHT_MODE}"
 update_env IDS_MODE "${IDS_MODE:-none}"
 update_env DHCP_STACK "${DHCP_STACK:-dnsmasq}"
-update_env DNS_STACK "${DNS_STACK:-unbound}"
+update_env DNS_STACK "${DNS_STACK:-adguard}"
 update_env NFT_GUARD_ENABLE "${NFT_GUARD_ENABLE:-true}"
 update_env NFT_SYNOPROXY_ENABLE "${NFT_SYNOPROXY_ENABLE:-true}"
 update_env NFT_RATE_LIMIT_ENABLE "${NFT_RATE_LIMIT_ENABLE:-true}"
@@ -176,7 +176,7 @@ if ! grep -q '^WRAP_MODE=' "$(dirname "$0")/../.env" 2>/dev/null; then
   echo "WRAP_MODE=hysteria2" >> "$(dirname "$0")/../.env"
 fi
 if ! grep -q '^DNS_STACK=' "$(dirname "$0")/../.env" 2>/dev/null; then
-  echo "DNS_STACK=unbound" >> "$(dirname "$0")/../.env"
+  echo "DNS_STACK=adguard" >> "$(dirname "$0")/../.env"
 fi
 if ! grep -q '^SPA_ENABLE=' "$(dirname "$0")/../.env" 2>/dev/null; then
   echo "SPA_ENABLE=true" >> "$(dirname "$0")/../.env"

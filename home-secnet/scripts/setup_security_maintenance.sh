@@ -8,9 +8,27 @@ if [[ -f "$LIB_PATH" ]]; then
   source "$LIB_PATH"
 fi
 
-log_info "[11] Setting up daily updates and security scans (host + VMs)..."
+log_info "[11] Setting up daily updates and optional security scans (host + VMs)..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/.env"
+
+# Gate optional scanners
+if [[ "${SECURITY_SCANNERS_ENABLE:-false}" != "true" ]]; then
+  echo "[11] SECURITY_SCANNERS_ENABLE!=true; installing unattended-upgrades only."
+  setup_unattended() {
+    echo "[11] Installing unattended-upgrades and configuring apt periodic..."
+    apt-get update -y
+    apt-get install -y unattended-upgrades apt-listchanges
+    cat > /etc/apt/apt.conf.d/20auto-upgrades <<EOF
+APT::Periodic::Update-Package-Lists \"1\";
+APT::Periodic::Unattended-Upgrade \"1\";
+EOF
+    dpkg-reconfigure -f noninteractive unattended-upgrades || echo "[11] unattended-upgrades reconfigure failed" >&2
+  }
+  setup_unattended
+  echo "[11] Skipping scanner installs and timers."
+  exit 0
+fi
 
 if [[ $EUID -ne 0 ]]; then
   echo "[11] Run as root on the Proxmox host." >&2

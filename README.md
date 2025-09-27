@@ -91,13 +91,39 @@ Next Steps
 Notes & Limitations
 - Some downloads (e.g., images) are best‑effort and may require retries.
 - Static WAN: adjust the rendered netplan or extend the render step to write static WAN from `.env`.
-- Email alerts require a mailer. Scripts prefer `mail` (bsd‑mailx), then `msmtp`, then `sendmail`. Set SMTP vars in `.env` to relay.
+- Email alerts require a mailer. Set SMTP vars in `.env` to relay.
 
-Migration
-- If you started with VLANs and want a flat LAN:
-  - Run `bash scripts/migrate_to_flat_lan.sh` on the Proxmox host to update bridges, remove VM NIC VLAN tags, regenerate configs, and push to the Router VM. Router configs are backed up before replacement.
-  - The Router VM LAN interface remains `${ROUTER_LAN_IF}` with IP `${GW_TRUSTED}`; VLAN subinterfaces are removed by netplan.
-  - DHCP will listen only on `${ROUTER_LAN_IF}`.
+Quick Start
+- Defaults: AdGuard Home with Quad9 DoT and DNSSEC, SPA-gated WireGuard, nftables default-deny.
+- Prereqs: Ubuntu 24.04 host, bash, curl, ssh, nft, wg, `cargo` optional.
+- Steps:
+  - Clone repo and `cd home-secnet`.
+  - Run `make all` to set up `.env`, detect NICs, render, and apply.
+  - Review and adjust `.env` via `home-secnet/scripts/setup_env.sh` (idempotent).
+  - Re-apply router configs anytime with `make router`.
+
+Baremetal Host Networking
+- Provider detection: scripts choose Proxmox if tools are present; otherwise baremetal.
+- Baremetal flow:
+  - `home-secnet/scripts/configure_host.sh` applies host firewall and prerequisites.
+  - `home-secnet/scripts/apply_router_configs.sh` pushes rendered configs to the router VM/host.
+  - Netplan and nftables are rendered from templates under `home-secnet/router/configs/`.
+
+Air-gapped SPA
+- Pre-stage SPA artifacts under `home-secnet/render/opt/spa` to avoid network access on the router during install.
+- Files: `home-secnet-spa-pq`, `home-secnet-spa-pq-client`, `token.json`, optional `token.sig`, optional `pubkey.gpg`.
+- Place these under `home-secnet/render/opt/spa/` before running `make router`.
+
+Security Best Practices
+- DNS: AdGuard defaults to DoT upstreams (Quad9 primary) with DNSSEC; UI binds to `127.0.0.1` by default. Use SSH tunnel for UI access.
+- SPA: PQ‑KEM (Kyber‑768 + HMAC) defaults on; see `docs/SPA_PQ.md`.
+- nftables: default‑deny; chain names match templates in `home-secnet/router/configs/`.
+- Scanners (optional): set `SECURITY_SCANNERS_ENABLE=true` in `home-secnet/.env`, then run `make security-enable` to copy scripts and enable timers on the router.
+
+Proxmox Provider (Appendix)
+- Node firewall groups and rules: `home-secnet/proxmox/`.
+- Router VM creation: `home-secnet/scripts/providers/proxmox/create_router_vm.sh`.
+- After provisioning, run `make router` to render and apply configs.
 SPA (PQ‑KEM) Summary
 - Default SPA mode: `pqkem` using ML‑KEM/Kyber‑768 and HMAC‑SHA256.
 - Daemon: `home-secnet/router/spa-pq` runs on the router, listening on `SPA_PQ_PORT`, inserting ephemeral allow rules into nftables chain `wg_spa_allow` for `OPEN_SECS`.
