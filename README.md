@@ -2,20 +2,16 @@ Winder (Router System)
 
 Winder provides turn‑key automation for a Proxmox‑based, zero‑trust, WireGuard‑first home network. It provisions an Ubuntu Router VM with nftables, WireGuard, PQ‑KEM SPA control‑plane (default), AdGuard Home or Unbound, ISC DHCP, Suricata (inline), and traffic shaping; per‑VLAN DHCP with deny‑by‑default east‑west; and a Proxmox UI reachable only over WireGuard.
 
-Quick Start (Runbook)
-- Preflight (tools & distro check): `bash scripts/preflight.sh`
-- Prepare environment (.env wizard): `bash scripts/setup_env.sh`
-- Detect NICs (confirm/override): `bash scripts/detect_nics.sh`
-- Harden Proxmox node: `bash scripts/harden_host.sh`
-- Create bridges: `bash scripts/configure_bridges.sh`
-- Fetch cloud image: `bash scripts/prepare_cloud_image.sh`
-- Create Router VM: `bash scripts/create_router_vm.sh`
-- Render router configs: `bash scripts/render_router_configs.sh`
-- Push/apply configs: `bash scripts/apply_router_configs.sh` (prompts for `ROUTER_IP` if needed)
-- Lock down node firewall: `bash scripts/apply_node_firewall.sh`
-- Security maintenance (updates + scanners): `bash scripts/setup_security_maintenance.sh`
-- Verify basic health: `bash scripts/verify_deploy.sh`
-- Migrate to flat LAN (optional): `bash scripts/migrate_to_flat_lan.sh`
+Quick Start (Provider‑Aware)
+- Preflight: `bash home-secnet/scripts/preflight.sh`
+- Setup env: `bash home-secnet/scripts/setup_env.sh` (select baremetal by default; proxmox optional when detected)
+- Host step (provider‑aware): `make -C home-secnet host`
+  - Baremetal: previews network changes (use `providers/baremetal/configure_network.sh --apply` to write netplan safely)
+  - Proxmox: configures bridges/VM/firewall via adapters
+- Render configs: `bash home-secnet/scripts/render_router_configs.sh`
+- Apply configs: `bash home-secnet/scripts/apply_router_configs.sh`
+- Security maintenance: `bash home-secnet/scripts/setup_security_maintenance.sh`
+- Verify health: `bash home-secnet/scripts/verify_deploy.sh`
 
 Pre-Alpha / Pre-Release
 This project is pre‑alpha. Expect rapid iteration and breaking changes. While releases are paused, install from main with the one‑liner installer: `curl -fsSL https://raw.githubusercontent.com/csysp/winder/main/home-secnet/scripts/install_winder.sh -o /tmp/install_winder.sh && chmod +x /tmp/install_winder.sh && /tmp/install_winder.sh`.

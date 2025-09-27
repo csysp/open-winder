@@ -61,6 +61,8 @@ ts=$(date +%Y%m%d%H%M%S)
 sudo mkdir -p /etc/netplan
 for f in /etc/netplan/*.yaml; do [[ -f "$f" ]] && sudo cp -f "$f" "$f.bak-$ts" || true; done
 
+cidr_to_prefix() { awk -F/ '{print $2}' <<<"$1"; }
+trusted_prefix=$(cidr_to_prefix "${NET_TRUSTED:-10.20.0.0/24}")
 outfile=/etc/netplan/99-winder.yaml
 sudo tee "$outfile" >/dev/null <<YAML
 network:
@@ -75,7 +77,7 @@ network:
   bridges:
     br0:
       interfaces: [$lan_if]
-      addresses: [${GW_TRUSTED:-10.20.0.1}/24]
+      addresses: [${GW_TRUSTED:-10.20.0.1}/$trusted_prefix]
       dhcp4: false
       parameters:
         stp: false
