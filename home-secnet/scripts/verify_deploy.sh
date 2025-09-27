@@ -30,26 +30,38 @@ log_info "[12] Running post checks..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/.env"
 
-ROUTER_IP=${ROUTER_IP:-}
-if [[ -z "${ROUTER_IP}" ]]; then
-  read -r -p "[12] Enter Router VM IP (for ssh): " ROUTER_IP
-  if [[ -z "$ROUTER_IP" ]]; then echo "[12] Router IP required." >&2; exit 1; fi
-fi
-
 RUSER=${ROUTER_ADMIN_USER}
+ROUTER_IP=${ROUTER_IP:-}
 
-echo "[12] Check WireGuard status on router..."
-ssh -o StrictHostKeyChecking=accept-new ${RUSER}@${ROUTER_IP} 'sudo wg show || { echo "wg show failed (WireGuard may be down)" >&2; exit 0; }'
+is_local_router() {
+  local rip="${ROUTER_IP:-}"
+  if [[ -z "$rip" || "$rip" == "127.0.0.1" || "$rip" == "localhost" ]]; then return 0; fi
+  ip -o -4 addr show | awk '{print $4}' | cut -d/ -f1 | grep -qx "$rip" && return 0 || return 1
+}
 
-echo "[12] Check DNS from router for each VLAN IP (binding tests)..."
-ssh ${RUSER}@${ROUTER_IP} 'for ip in ${GW_TRUSTED} ${GW_IOT} ${GW_GUEST} ${GW_LAB}; do echo "Testing DNS bind on $ip"; if ! dig +short @${ip} example.com; then echo "DNS query failed on ${ip}" >&2; fi; done'
+run_remote() { ssh -o StrictHostKeyChecking=accept-new "${RUSER}@${ROUTER_IP}" "$@"; }
+run_local()  { bash -lc "$*"; }
 
-echo "[12] Verify Suricata running..."
-ssh ${RUSER}@${ROUTER_IP} 'systemctl status suricata --no-pager || echo "suricata service not healthy" >&2; sudo tail -n 50 /var/log/suricata/suricata.log || echo "no suricata logs" >&2'
-
-if [[ "${WRAP_MODE:-none}" == "hysteria2" ]]; then
-  echo "[12] Check Hysteria2 (QUIC wrapper) status and port..."
-  ssh ${RUSER}@${ROUTER_IP} "systemctl status hysteria --no-pager || echo 'hysteria service not healthy' >&2; sudo ss -lun | awk '{print \$5}' | grep -q ':${WRAP_LISTEN_PORT}\$' && echo 'Hysteria listening on UDP ${WRAP_LISTEN_PORT}' || echo 'Hysteria UDP ${WRAP_LISTEN_PORT} not found'"
+if is_local_router; then
+  log_info "[12] Local router detected; running checks locally"
+  run_local "sudo wg show || { echo 'wg show failed (WireGuard may be down)' >&2; exit 0; }"
+  run_local 'for ip in ${GW_TRUSTED} ${GW_IOT} ${GW_GUEST} ${GW_LAB}; do echo "Testing DNS bind on $ip"; if ! dig +short @${ip} example.com; then echo "DNS query failed on ${ip}" >&2; fi; done'
+  run_local 'systemctl status suricata --no-pager || echo "suricata service not healthy" >&2; sudo tail -n 50 /var/log/suricata/suricata.log || echo "no suricata logs" >&2'
+  if [[ "${WRAP_MODE:-none}" == "hysteria2" ]]; then
+    run_local "systemctl status hysteria --no-pager || echo 'hysteria service not healthy' >&2; sudo ss -lun | awk '{print \\$5}' | grep -q ':${WRAP_LISTEN_PORT}\$' && echo 'Hysteria listening on UDP ${WRAP_LISTEN_PORT}' || echo 'Hysteria UDP ${WRAP_LISTEN_PORT} not found'"
+  fi
+else
+  if [[ -z "${ROUTER_IP}" ]]; then
+    read -r -p "[12] Enter Router VM IP (for ssh): " ROUTER_IP
+    if [[ -z "$ROUTER_IP" ]]; then echo "[12] Router IP required." >&2; exit 1; fi
+  fi
+  log_info "[12] Using SSH to run remote checks"
+  run_remote 'sudo wg show || { echo "wg show failed (WireGuard may be down)" >&2; exit 0; }'
+  run_remote 'for ip in ${GW_TRUSTED} ${GW_IOT} ${GW_GUEST} ${GW_LAB}; do echo "Testing DNS bind on $ip"; if ! dig +short @${ip} example.com; then echo "DNS query failed on ${ip}" >&2; fi; done'
+  run_remote 'systemctl status suricata --no-pager || echo "suricata service not healthy" >&2; sudo tail -n 50 /var/log/suricata/suricata.log || echo "no suricata logs" >&2'
+  if [[ "${WRAP_MODE:-none}" == "hysteria2" ]]; then
+    run_remote "systemctl status hysteria --no-pager || echo 'hysteria service not healthy' >&2; sudo ss -lun | awk '{print \\$5}' | grep -q ':${WRAP_LISTEN_PORT}\$' && echo 'Hysteria listening on UDP ${WRAP_LISTEN_PORT}' || echo 'Hysteria UDP ${WRAP_LISTEN_PORT} not found'"
+  fi
 fi
 
 echo "[12] Next steps:"
