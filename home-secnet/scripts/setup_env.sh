@@ -153,8 +153,10 @@ update_env NFT_DYNAMIC_BAN_ENABLE "${NFT_DYNAMIC_BAN_ENABLE:-false}"
 update_env SHAPING_ENABLE "${SHAPING_ENABLE:-true}"
 update_env LOG_VERBOSITY "${LOG_VERBOSITY:-minimal}"
 
-# Ensure required fields
-require_nonempty PVE_NODE "Proxmox node name (e.g., pve)"
+# Ensure required fields (provider-specific)
+if [[ "${HOST_PROVIDER}" == "proxmox" ]]; then
+  require_nonempty PVE_NODE "Proxmox node name (e.g., pve)"
+fi
 
 # Randomize WG_PORT on first setup if not already set
 if ! grep -q '^WG_PORT=' "$(dirname "$0")/../.env" 2>/dev/null; then
