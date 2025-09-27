@@ -12,6 +12,7 @@ Quick Start (Provider‑Aware)
 - Apply configs: `bash home-secnet/scripts/apply_router_configs.sh`
 - Security maintenance: `bash home-secnet/scripts/setup_security_maintenance.sh`
 - Verify health: `bash home-secnet/scripts/verify_deploy.sh`
+ - Detect hypervisor (optional hints): `make -C home-secnet detect-hypervisor`
 
 Pre-Alpha / Pre-Release
 This project is pre‑alpha. Expect rapid iteration and breaking changes. While releases are paused, install from main with the one‑liner installer: `curl -fsSL https://raw.githubusercontent.com/csysp/winder/main/home-secnet/scripts/install_winder.sh -o /tmp/install_winder.sh && chmod +x /tmp/install_winder.sh && /tmp/install_winder.sh`.

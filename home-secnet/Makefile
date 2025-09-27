@@ -5,6 +5,7 @@ SHELL := /bin/bash
 help:
 	@echo "Targets: all | router | checks | clean"
 	@echo "Dev: fmt | clippy"
+ 	@echo "Utils: detect-hypervisor"
 
 all: spa
 	bash scripts/preflight.sh
@@ -76,6 +77,10 @@ ultralight:
 	bash scripts/apply_router_configs.sh
 host:
 	bash scripts/configure_host.sh
+
+.PHONY: detect-hypervisor
+detect-hypervisor:
+	bash scripts/detect_hypervisor.sh
 
 .PHONY: security-enable
 security-enable:
