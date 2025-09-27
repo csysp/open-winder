@@ -71,6 +71,12 @@ network:
   ethernets:
     $wan_if:
       dhcp4: ${ISP_WAN_TYPE:-dhcp}
+      addresses: [${WAN_STATIC_IP:-}]
+      routes:
+        - to: default
+          via: ${WAN_STATIC_GW:-}
+      nameservers:
+        addresses: [${WAN_STATIC_DNS:-}]
       optional: true
     $lan_if:
       dhcp4: false

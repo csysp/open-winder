@@ -46,7 +46,9 @@ if is_local_router; then
   log_info "[12] Local router detected; running checks locally"
   run_local "sudo wg show || { echo 'wg show failed (WireGuard may be down)' >&2; exit 0; }"
   run_local 'for ip in ${GW_TRUSTED} ${GW_IOT} ${GW_GUEST} ${GW_LAB}; do echo "Testing DNS bind on $ip"; if ! dig +short @${ip} example.com; then echo "DNS query failed on ${ip}" >&2; fi; done'
-  run_local 'systemctl status suricata --no-pager || echo "suricata service not healthy" >&2; sudo tail -n 50 /var/log/suricata/suricata.log || echo "no suricata logs" >&2'
+  if [[ "${IDS_MODE:-suricata}" != "none" ]]; then
+    run_local 'systemctl status suricata --no-pager || echo "suricata service not healthy" >&2; sudo tail -n 50 /var/log/suricata/suricata.log || echo "no suricata logs" >&2'
+  fi
   if [[ "${WRAP_MODE:-none}" == "hysteria2" ]]; then
     run_local "systemctl status hysteria --no-pager || echo 'hysteria service not healthy' >&2; sudo ss -lun | awk '{print \\$5}' | grep -q ':${WRAP_LISTEN_PORT}\$' && echo 'Hysteria listening on UDP ${WRAP_LISTEN_PORT}' || echo 'Hysteria UDP ${WRAP_LISTEN_PORT} not found'"
   fi
@@ -58,7 +60,9 @@ else
   log_info "[12] Using SSH to run remote checks"
   run_remote 'sudo wg show || { echo "wg show failed (WireGuard may be down)" >&2; exit 0; }'
   run_remote 'for ip in ${GW_TRUSTED} ${GW_IOT} ${GW_GUEST} ${GW_LAB}; do echo "Testing DNS bind on $ip"; if ! dig +short @${ip} example.com; then echo "DNS query failed on ${ip}" >&2; fi; done'
-  run_remote 'systemctl status suricata --no-pager || echo "suricata service not healthy" >&2; sudo tail -n 50 /var/log/suricata/suricata.log || echo "no suricata logs" >&2'
+  if [[ "${IDS_MODE:-suricata}" != "none" ]]; then
+    run_remote 'systemctl status suricata --no-pager || echo "suricata service not healthy" >&2; sudo tail -n 50 /var/log/suricata/suricata.log || echo "no suricata logs" >&2'
+  fi
   if [[ "${WRAP_MODE:-none}" == "hysteria2" ]]; then
     run_remote "systemctl status hysteria --no-pager || echo 'hysteria service not healthy' >&2; sudo ss -lun | awk '{print \\$5}' | grep -q ':${WRAP_LISTEN_PORT}\$' && echo 'Hysteria listening on UDP ${WRAP_LISTEN_PORT}' || echo 'Hysteria UDP ${WRAP_LISTEN_PORT} not found'"
   fi
