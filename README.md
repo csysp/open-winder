@@ -27,7 +27,21 @@ Make Targets
 - `make rotate-wg-key peer=<name>`: Rotates a specific WireGuard peer’s key, updates rendered server/client configs, and archives the prior client config.
 - SPA artifacts: Deployment is artifact-based. Control router SPA daemon version with `SPA_PQ_VERSION` in `.env` (tag or `latest`). Router downloads binary + `.sha256`, optionally verifies with GPG if `SPA_PQ_SIG_URL` and `/etc/spa/pubkey.gpg` are set, verifies sha256, and installs to `/usr/local/bin/home-secnet-spa-pq`.
 - Remote logging: Enable rsyslog forwarding by setting `RSYSLOG_FORWARD_ENABLE=true` and `RSYSLOG_REMOTE=host:port` in `.env`.
-- `make spa`: Builds PQ‑KEM SPA server and client crates.
+- `make spa`: Builds PQ-KEM SPA server and client crates.
+
+Providers
+Winder runs on a plain Debian/Ubuntu host by default (baremetal). Proxmox is optional and supported via an adapter.
+
+- Baremetal (default): the current host acts as the router. `make -C home-secnet router` performs a provider‑aware host step, then renders and applies the router configuration locally. The host step previews network changes by default. You can apply them interactively with the `--apply` flag described below.
+- Proxmox (optional): when Proxmox tools are detected, setup offers to use the proxmox provider. Bridges (`vmbr*`), VM creation (`qm`), and node firewall are handled by adapter scripts; rendering and apply proceed as usual.
+
+Baremetal Network Configure (Preview or Apply)
+Use `home-secnet/scripts/providers/baremetal/configure_network.sh` to select WAN/LAN interfaces quickly and generate a minimal netplan for a router host.
+
+- Preview (no changes): `bash home-secnet/scripts/providers/baremetal/configure_network.sh`
+- Apply (writes netplan and prompts to reboot networking): `bash home-secnet/scripts/providers/baremetal/configure_network.sh --apply`
+
+During apply, you’ll be prompted to choose WAN and LAN from detected NICs. The script writes a netplan file under `/etc/netplan/99-winder.yaml`, backs up existing files to `/etc/netplan/*.bak-<ts>`, and runs `netplan try` (with a 120‑second rollback window) to avoid lockouts. You can abort safely during the timer.
 
 Assumptions & Prereqs
 - Proxmox VE installed on a small host. A second NIC is strongly recommended (USB 3.0 gigabit works well) to separate WAN and LAN.
