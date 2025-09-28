@@ -30,13 +30,19 @@ log_info "[08] Rendering router configs from .env and generating keys..."
 
 mkdir -p "$ROOT_DIR/render/router/configs" "$ROOT_DIR/clients"
 
-# Generate WireGuard server keys if absent
+# Generate WireGuard server keys if absent (graceful fallback when wg is unavailable)
 WG_DIR="$ROOT_DIR/render/wg"
 mkdir -p "$WG_DIR"
 if [[ ! -f "$WG_DIR/privatekey" ]]; then
-  echo "[08] Generating WireGuard keypair..."
   umask 077
-  wg genkey | tee "$WG_DIR/privatekey" | wg pubkey > "$WG_DIR/publickey"
+  if command -v wg >/dev/null 2>&1; then
+    echo "[08] Generating WireGuard keypair..."
+    wg genkey | tee "$WG_DIR/privatekey" | wg pubkey > "$WG_DIR/publickey"
+  else
+    echo "[08] 'wg' not found; writing placeholder WireGuard keys for render" >&2
+    printf '%s\n' "PLACEHOLDER_PRIVATE_KEY" > "$WG_DIR/privatekey"
+    printf '%s\n' "PLACEHOLDER_PUBLIC_KEY" > "$WG_DIR/publickey"
+  fi
 fi
 WG_PRIVATE_KEY=$(cat "$WG_DIR/privatekey")
 WG_PUBLIC_KEY=$(cat "$WG_DIR/publickey")
