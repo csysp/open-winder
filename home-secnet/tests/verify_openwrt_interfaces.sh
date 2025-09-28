@@ -16,6 +16,8 @@ ROUTER_WAN_IF=wan
 WG_PORT=51820
 WG_SERVER_PRIVKEY=dummykey
 WG_SERVER_IP=10.0.0.1/24
+LAN_ADDR=192.168.1.1
+LAN_NETMASK=255.255.255.0
 EOF
 
 VERBOSE=1 bash "$ROOT_DIR/scripts/render_router_configs.sh" || true

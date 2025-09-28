@@ -95,6 +95,28 @@ if [[ -d "$ROOT_DIR/openwrt/templates" ]]; then
     render_template "$ROOT_DIR/openwrt/templates/etc/uci-defaults/99-suricata-enable.template" "$ROOT_DIR/render/openwrt/etc/uci-defaults/99-suricata-enable" 2>/dev/null || true
     chmod 0755 "$ROOT_DIR/render/openwrt/etc/uci-defaults/99-suricata-enable" || true
   fi
+  # SQM (optional; prefer SQM over custom tc)
+  if [[ "${SHAPING_ENABLE:-false}" == "true" ]]; then
+    render_template "$ROOT_DIR/openwrt/templates/etc/config/sqm.template" "$ROOT_DIR/render/openwrt/etc/config/sqm" 2>/dev/null || true
+  fi
+  # WireGuard egress client (wg1) optional
+  if [[ "${WG2_ENABLE:-false}" == "true" ]]; then
+    # Append wg1 interface to existing network config
+    tmp_net="$ROOT_DIR/render/openwrt/etc/config/network"
+    mkdir -p "$(dirname "$tmp_net")"
+    frag="$ROOT_DIR/render/meta/network.wg1.fragment"
+    render_template "$ROOT_DIR/openwrt/templates/etc/config/network.wg1.template" "$frag" 2>/dev/null || true
+    if [[ -f "$tmp_net" ]]; then
+      cat "$frag" >> "$tmp_net"
+    else
+      cp -f "$frag" "$tmp_net"
+    fi
+    rm -f "$frag"
+  fi
+  # MWAN3 (optional)
+  if [[ "${MWAN3_ENABLE:-false}" == "true" ]]; then
+    render_template "$ROOT_DIR/openwrt/templates/etc/config/mwan3.template" "$ROOT_DIR/render/openwrt/etc/config/mwan3" 2>/dev/null || true
+  fi
 fi
 # Avoid sourcing .env directly elsewhere; lib/env.sh already loaded
 # Write env-vars for templates (to render/, not router/)

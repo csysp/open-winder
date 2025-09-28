@@ -105,6 +105,29 @@ Agent Operating Notes
  - Normalize line endings and guard dynamic `source` with ShellCheck directives when necessary (SC1090).
  - When introducing installers or tags, ensure tags include required scripts and that CI validates line endings and shellcheck cleanliness.
 
+OpenWRT Reference Links (consult before OpenWRT changes)
+- https://openwrt.org/docs/start
+- https://openwrt.org/docs/guide-user/network/architecture/components
+- https://openwrt.org/docs/guide-user/network/openwrt_as_routerdevice
+- https://openwrt.org/docs/guide-user/network/protocol.dhcp
+- https://openwrt.org/docs/guide-user/network/tunneling_interface_protocols
+- https://openwrt.org/docs/guide-user/network/traffic-shaping/start
+- https://openwrt.org/docs/guide-user/network/traffic-shaping/packet.scheduler.theory
+- https://openwrt.org/docs/guide-user/network/wifi/guestwifi/start
+- https://openwrt.org/docs/guide-user/network/wifi/wireless-tool/start
+- https://openwrt.org/docs/guide-user/routing/examples/dual-wan
+- https://openwrt.org/docs/guide-user/services/vpn/wireguard/basics
+- https://openwrt.org/docs/guide-user/services/kerberos
+- https://openwrt.org/docs/guide-user/services/captive-portal/opennds
+- https://openwrt.org/docs/guide-user/services/ddns/client
+- https://openwrt.org/docs/guide-user/services/downloading_and_filesharing/bittorrent
+- https://openwrt.org/docs/guide-user/services/proxy/privoxy
+- https://openwrt.org/docs/guide-user/storage/start
+- https://openwrt.org/docs/guide-user/storage/disk.encryption
+- https://gitlab.com/cryptsetup/cryptsetup/-/wikis/FrequentlyAskedQuestions
+- https://openwrt.org/docs/guide-user/storage/hd-idle
+- For OpenWrt packaging/development flows: https://openwrt.org/docs/guide-developer/creating-a-cmake-package-in-openwrt
+
 Security Posture
 - Default-deny for network listeners; bind only to required interfaces.
 - Do not log secrets or commit sensitive files. `.env` is never committed.

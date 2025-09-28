@@ -56,6 +56,20 @@ if [[ "${SURICATA_ENABLE:-false}" == "true" ]]; then
     *) echo "[ib] SURICATA_ENABLE=true → adding 'suricata' to OPENWRT_PACKAGES"; EXTRA_PKGS="${EXTRA_PKGS} suricata" ;;
   esac
 fi
+# Auto-append SQM if shaping enabled
+if [[ "${SHAPING_ENABLE:-false}" == "true" ]]; then
+  case " $EXTRA_PKGS " in *" sqm-scripts "*) : ;; *) echo "[ib] SHAPING_ENABLE=true → adding 'sqm-scripts'"; EXTRA_PKGS="${EXTRA_PKGS} sqm-scripts";; esac
+fi
+# Auto-append WireGuard packages if WG2 enabled
+if [[ "${WG2_ENABLE:-false}" == "true" ]]; then
+  for pkg in wireguard-tools kmod-wireguard; do
+    case " $EXTRA_PKGS " in *" $pkg "*) : ;; *) EXTRA_PKGS="${EXTRA_PKGS} $pkg";; esac
+  done
+fi
+# Auto-append mwan3 if enabled
+if [[ "${MWAN3_ENABLE:-false}" == "true" ]]; then
+  case " $EXTRA_PKGS " in *" mwan3 "*) : ;; *) echo "[ib] MWAN3_ENABLE=true → adding 'mwan3'"; EXTRA_PKGS="${EXTRA_PKGS} mwan3";; esac
+fi
 FILES_DIR="${ROOT_DIR}/render/openwrt-files"
 # Prepare a minimal files/ overlay from rendered OpenWRT artifacts only
 mkdir -p "$FILES_DIR"

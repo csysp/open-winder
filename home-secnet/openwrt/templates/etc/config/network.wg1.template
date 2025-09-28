@@ -1,0 +1,13 @@
+config interface 'wg1'
+        option proto 'wireguard'
+        option private_key '${WG2_PRIVATE_KEY}'
+        list addresses '${WG2_ADDRESS}'
+        option listen_port '0'
+
+config wireguard_wg1
+        option description 'wg2-peer'
+        option public_key '${WG2_PEER_PUBLIC_KEY}'
+        option endpoint_host '${WG2_ENDPOINT_HOST}'
+        option endpoint_port '${WG2_ENDPOINT_PORT}'
+        option persistent_keepalive '${WG2_PERSISTENT_KEEPALIVE}'
+        list allowed_ips '${WG2_ALLOWED_IPS}'
