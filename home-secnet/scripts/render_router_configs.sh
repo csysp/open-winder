@@ -30,9 +30,6 @@ mkdir -p "$ROOT_DIR/render" \
 "$ROOT_DIR/render/openwrt/etc/hysteria" || true
 # shellcheck disable=SC1090
 [[ -f "${SCRIPT_DIR}/lib/log.sh" ]] && source "${SCRIPT_DIR}/lib/log.sh"
-# shellcheck disable=SC1090
-source "${SCRIPT_DIR}/lib/env.sh"
-
 # Ensure OpenWRT overlay base directories always exist (CI-safe)
 export -p >/dev/null 2>&1 || true
 mkdir -p "$ROOT_DIR/render/openwrt/etc/config" \
