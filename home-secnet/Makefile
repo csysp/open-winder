@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-.PHONY: openwrt-render openwrt-build openwrt-flash checks-openwrt tests lint spa hypervisor-setup
+.PHONY: openwrt-render openwrt-build openwrt-flash checks-openwrt tests lint spa hypervisor-setup oneclick oneclick-flash
 
 ROOT := $(shell pwd)
 SCRIPTS := $(ROOT)/scripts
@@ -26,3 +26,9 @@ checks-openwrt: lint tests
 # Hypervisor setup: create vmbr0/vmbr1 on Proxmox if detected (idempotent)
 hypervisor-setup:
 	@"$(SCRIPTS)/providers/proxmox/configure_bridges.sh"
+
+oneclick:
+	@"$(SCRIPTS)/oneclick.sh" --yes
+
+oneclick-flash:
+	@"$(SCRIPTS)/oneclick.sh" --yes --flash device=$${device}
