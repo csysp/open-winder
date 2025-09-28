@@ -23,8 +23,6 @@ Details: Build & Flash
   - The build uses `render/` as a files overlay (e.g., SPA binaries under `render/opt`).
 - Output
   - Built images are written to `home-secnet/render/images/`.
-- Safety
-  - Flashing is destructive. Double-check `device=/dev/sdX` and the chosen image.
 
 Optional: Proxmox Bridges
 - Optional — Proxmox only: set up `vmbr0` (WAN) and `vmbr1` (LAN) out of the box.
@@ -43,7 +41,7 @@ Security & Options (Short)
 - Double‑hop (optional): set `DOUBLE_HOP_ENABLE=true` and `WG2_*` in `.env` for upstream egress via another WireGuard exit.
 - Logging (optional): set `RSYSLOG_FORWARD_ENABLE=true` and `RSYSLOG_REMOTE=host:port` to forward SPA/auth/IDS logs.
 - SPA details: see `docs/SPA_PQ.md`.
- - IDS: Suricata enabled by default (LAN `br-lan`). Overlay renders `/etc/suricata/suricata.yaml`; build auto-adds `suricata`; logs at `/var/log/suricata/eve.json`.
+- IDS: Suricata enabled by default (LAN `br-lan`). Overlay renders `/etc/suricata/suricata.yaml`; build auto-adds `suricata`; logs at `/var/log/suricata/eve.json`.
 
 Requirements
 - Host tools: bash, curl, tar, xz, sha256sum, rsync, ssh. ripgrep (rg) optional for lint.
