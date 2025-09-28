@@ -77,24 +77,31 @@ render_template() {
   fi
 }
 
+# Ensure OpenWRT overlay base directories always exist (CI-safe)
+export -p >/dev/null 2>&1 || true
+mkdir -p "$ROOT_DIR/render/openwrt/etc/config" \
+"$ROOT_DIR/render/openwrt/etc/nftables.d" \
+"$ROOT_DIR/render/openwrt/etc/init.d" \
+"$ROOT_DIR/render/openwrt/etc/uci-defaults" \
+"$ROOT_DIR/render/openwrt/etc/hysteria" || true
+
 # If OpenWRT overlay templates exist, render them into render/openwrt
 if [[ -d "$ROOT_DIR/openwrt/templates" ]]; then
-  export -p >/dev/null 2>&1 || true
-  render_template "$ROOT_DIR/openwrt/templates/etc/config/system.template" "$ROOT_DIR/render/openwrt/etc/config/system" 2>/dev/null || true
-  render_template "$ROOT_DIR/openwrt/templates/etc/config/dhcp.template" "$ROOT_DIR/render/openwrt/etc/config/dhcp" 2>/dev/null || true
-  render_template "$ROOT_DIR/openwrt/templates/etc/config/network.template" "$ROOT_DIR/render/openwrt/etc/config/network" 2>/dev/null || true
-  render_template "$ROOT_DIR/openwrt/templates/etc/config/firewall.template" "$ROOT_DIR/render/openwrt/etc/config/firewall" 2>/dev/null || true
-  render_template "$ROOT_DIR/openwrt/templates/etc/adguardhome.yaml.template" "$ROOT_DIR/render/openwrt/etc/adguardhome.yaml" 2>/dev/null || true
-  render_template "$ROOT_DIR/openwrt/templates/etc/unbound/unbound.conf.template" "$ROOT_DIR/render/openwrt/etc/unbound/unbound.conf" 2>/dev/null || true
-  render_template "$ROOT_DIR/openwrt/templates/etc/nftables.d/99-wg-spa.nft.template" "$ROOT_DIR/render/openwrt/etc/nftables.d/99-wg-spa.nft" 2>/dev/null || true
+  render_template "$ROOT_DIR/openwrt/templates/etc/config/system.template" "$ROOT_DIR/render/openwrt/etc/config/system" || true
+  render_template "$ROOT_DIR/openwrt/templates/etc/config/dhcp.template" "$ROOT_DIR/render/openwrt/etc/config/dhcp" || true
+  render_template "$ROOT_DIR/openwrt/templates/etc/config/network.template" "$ROOT_DIR/render/openwrt/etc/config/network" || true
+  render_template "$ROOT_DIR/openwrt/templates/etc/config/firewall.template" "$ROOT_DIR/render/openwrt/etc/config/firewall" || true
+  render_template "$ROOT_DIR/openwrt/templates/etc/adguardhome.yaml.template" "$ROOT_DIR/render/openwrt/etc/adguardhome.yaml" || true
+  render_template "$ROOT_DIR/openwrt/templates/etc/unbound/unbound.conf.template" "$ROOT_DIR/render/openwrt/etc/unbound/unbound.conf" || true
+  render_template "$ROOT_DIR/openwrt/templates/etc/nftables.d/99-wg-spa.nft.template" "$ROOT_DIR/render/openwrt/etc/nftables.d/99-wg-spa.nft" || true
   # Hysteria2 wrapper (optional)
   if [[ "${WRAP_MODE:-none}" == "hysteria2" ]]; then
-    render_template "$ROOT_DIR/openwrt/templates/etc/hysteria/config.yaml.template" "$ROOT_DIR/render/openwrt/etc/hysteria/config.yaml" 2>/dev/null || true
-    render_template "$ROOT_DIR/openwrt/templates/etc/init.d/hysteria.template" "$ROOT_DIR/render/openwrt/etc/init.d/hysteria" 2>/dev/null || true
+    render_template "$ROOT_DIR/openwrt/templates/etc/hysteria/config.yaml.template" "$ROOT_DIR/render/openwrt/etc/hysteria/config.yaml" || true
+    render_template "$ROOT_DIR/openwrt/templates/etc/init.d/hysteria.template" "$ROOT_DIR/render/openwrt/etc/init.d/hysteria" || true
     chmod 0755 "$ROOT_DIR/render/openwrt/etc/init.d/hysteria" || true
-    render_template "$ROOT_DIR/openwrt/templates/etc/uci-defaults/99-hysteria-enable.template" "$ROOT_DIR/render/openwrt/etc/uci-defaults/99-hysteria-enable" 2>/dev/null || true
+    render_template "$ROOT_DIR/openwrt/templates/etc/uci-defaults/99-hysteria-enable.template" "$ROOT_DIR/render/openwrt/etc/uci-defaults/99-hysteria-enable" || true
     chmod 0755 "$ROOT_DIR/render/openwrt/etc/uci-defaults/99-hysteria-enable" || true
-    render_template "$ROOT_DIR/openwrt/templates/etc/nftables.d/20-hysteria.nft.template" "$ROOT_DIR/render/openwrt/etc/nftables.d/20-hysteria.nft" 2>/dev/null || true
+    render_template "$ROOT_DIR/openwrt/templates/etc/nftables.d/20-hysteria.nft.template" "$ROOT_DIR/render/openwrt/etc/nftables.d/20-hysteria.nft" || true
     # Pre-staged binary embedding: copy from render/opt/hysteria if present
     if [[ -f "$ROOT_DIR/render/opt/hysteria/hysteria" ]]; then
       mkdir -p "$ROOT_DIR/render/openwrt/usr/bin"
@@ -104,15 +111,15 @@ if [[ -d "$ROOT_DIR/openwrt/templates" ]]; then
   fi
   # Suricata (optional)
   if [[ "${SURICATA_ENABLE:-false}" == "true" ]]; then
-    render_template "$ROOT_DIR/openwrt/templates/etc/suricata/suricata.yaml.template" "$ROOT_DIR/render/openwrt/etc/suricata/suricata.yaml" 2>/dev/null || true
-    render_template "$ROOT_DIR/openwrt/templates/etc/init.d/suricata.template" "$ROOT_DIR/render/openwrt/etc/init.d/suricata" 2>/dev/null || true
+    render_template "$ROOT_DIR/openwrt/templates/etc/suricata/suricata.yaml.template" "$ROOT_DIR/render/openwrt/etc/suricata/suricata.yaml" || true
+    render_template "$ROOT_DIR/openwrt/templates/etc/init.d/suricata.template" "$ROOT_DIR/render/openwrt/etc/init.d/suricata" || true
     chmod 0755 "$ROOT_DIR/render/openwrt/etc/init.d/suricata" || true
-    render_template "$ROOT_DIR/openwrt/templates/etc/uci-defaults/99-suricata-enable.template" "$ROOT_DIR/render/openwrt/etc/uci-defaults/99-suricata-enable" 2>/dev/null || true
+    render_template "$ROOT_DIR/openwrt/templates/etc/uci-defaults/99-suricata-enable.template" "$ROOT_DIR/render/openwrt/etc/uci-defaults/99-suricata-enable" || true
     chmod 0755 "$ROOT_DIR/render/openwrt/etc/uci-defaults/99-suricata-enable" || true
   fi
   # SQM (optional; prefer SQM over custom tc)
   if [[ "${SHAPING_ENABLE:-false}" == "true" ]]; then
-    render_template "$ROOT_DIR/openwrt/templates/etc/config/sqm.template" "$ROOT_DIR/render/openwrt/etc/config/sqm" 2>/dev/null || true
+    render_template "$ROOT_DIR/openwrt/templates/etc/config/sqm.template" "$ROOT_DIR/render/openwrt/etc/config/sqm" || true
   fi
   # WireGuard egress client (wg1) optional
   if [[ "${WG2_ENABLE:-false}" == "true" ]]; then
@@ -120,7 +127,7 @@ if [[ -d "$ROOT_DIR/openwrt/templates" ]]; then
     tmp_net="$ROOT_DIR/render/openwrt/etc/config/network"
     mkdir -p "$(dirname "$tmp_net")"
     frag="$ROOT_DIR/render/meta/network.wg1.fragment"
-    render_template "$ROOT_DIR/openwrt/templates/etc/config/network.wg1.template" "$frag" 2>/dev/null || true
+    render_template "$ROOT_DIR/openwrt/templates/etc/config/network.wg1.template" "$frag" || true
     if [[ -f "$tmp_net" ]]; then
       cat "$frag" >> "$tmp_net"
     else
@@ -130,8 +137,9 @@ if [[ -d "$ROOT_DIR/openwrt/templates" ]]; then
   fi
   # MWAN3 (optional)
   if [[ "${MWAN3_ENABLE:-false}" == "true" ]]; then
-    render_template "$ROOT_DIR/openwrt/templates/etc/config/mwan3.template" "$ROOT_DIR/render/openwrt/etc/config/mwan3" 2>/dev/null || true
+    render_template "$ROOT_DIR/openwrt/templates/etc/config/mwan3.template" "$ROOT_DIR/render/openwrt/etc/config/mwan3" || true
   fi
+  echo "[08] OpenWRT overlay rendered to $ROOT_DIR/render/openwrt/."
 fi
 
 # OpenWRT-only branch: stop here to avoid legacy VM/Ubuntu render paths
