@@ -35,8 +35,7 @@ enforce_mode() {
     export MODE="$expected"
   fi
   if [[ "$MODE" != "$expected" ]]; then
-    echo "[env] MODE=$MODE not supported in current branch; expected $expected" >&2
-    echo "[env] See docs/legacy_proxmox.md for legacy flow." >&2
+    echo "[env] MODE=$MODE not supported in this branch; expected $expected" >&2
     exit 1
   fi
 }
