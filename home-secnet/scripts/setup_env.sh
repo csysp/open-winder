@@ -102,7 +102,7 @@ ensure_default DOUBLE_HOP_ENABLE true
 update_env MODE "${MODE}"
 
 # Suricata defaults and notice
-ensure_default SURICATA_ENABLE false
+ensure_default SURICATA_ENABLE true
 ensure_default SURICATA_IFACES br-lan
 ensure_default SURICATA_EVE_ENABLE true
 ensure_default SURICATA_HOME_NET "[192.168.1.0/24]"
