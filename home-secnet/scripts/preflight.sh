@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-only
 set -euo pipefail; IFS=$'\n\t'
 # Purpose: Validate host OS and required tools; install missing deps on Debian/Ubuntu.
 # Inputs: environment variables: VERBOSE (optional)

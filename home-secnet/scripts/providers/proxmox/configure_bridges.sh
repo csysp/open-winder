@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-only
 set -euo pipefail; IFS=$'\n\t'
 # Purpose: Detect Proxmox and idempotently setup vmbr0 (WAN) and vmbr1 (LAN) bridges.
 # Inputs: VERBOSE (optional); PHYS_WAN_IF/PHYS_LAN_IF (optional overrides)

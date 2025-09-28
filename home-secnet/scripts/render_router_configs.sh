@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-only
 set -euo pipefail; IFS=$'\n\t'
 # Purpose: Render router configuration files into home-secnet/render/.
 # Inputs: .env via scripts/lib/env.sh; VERBOSE (optional)

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-only
 set -euo pipefail; IFS=$'\n\t'
 # Purpose: Verified downloads with SHA256. Usage: download_verified URL SHA256 OUT
 
@@ -22,4 +23,3 @@ download_verified() {
 }
 
 export -f download_verified
-

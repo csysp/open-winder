@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-only
 set -euo pipefail; IFS=$'\n\t'
 # Purpose: One-liner entrypoint to run the Winder setup wizard locally or from a pinned URL.
 # Local mode: executes the repo's wizard.

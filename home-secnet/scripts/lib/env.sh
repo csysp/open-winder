@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-only
 set -euo pipefail; IFS=$'\n\t'
 # Purpose: Safe, consistent environment loader for Winder scripts.
 # Loads .env.example then .env (if present), enforces MODE and required vars.
@@ -45,4 +46,3 @@ load_env
 enforce_mode
 
 export -f load_env require_vars enforce_mode
-

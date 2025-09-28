@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-only
 set -euo pipefail; IFS=$'\n\t'
 # Purpose: Build a pinned OpenWRT image using ImageBuilder and overlay files from render/
 # Inputs from .env (via lib/env.sh): OPENWRT_VERSION, OPENWRT_TARGET, OPENWRT_PROFILE, OPENWRT_SHA256

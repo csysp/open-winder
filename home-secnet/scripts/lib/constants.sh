@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-only
 set -euo pipefail; IFS=$'\n\t'
 # Purpose: Central constants to keep scripts/docs aligned.
 
@@ -12,4 +13,3 @@ readonly BIN_SPA_DAEMON="/usr/local/bin/home-secnet-spa-pq"
 readonly BIN_SPA_CLIENT="/usr/local/bin/home-secnet-spa-pq-client"
 
 export NFT_TABLE NFT_INPUT_CHAIN NFT_WG_SPA_ALLOW BIN_SPA_DAEMON BIN_SPA_CLIENT
-

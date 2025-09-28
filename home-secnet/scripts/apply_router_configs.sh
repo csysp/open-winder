@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-only
 set -euo pipefail; IFS=$'\n\t'
 # Purpose: Push rendered configs to Router VM and apply them safely.
 # Inputs: .env via scripts/lib/env.sh; VERBOSE (optional)

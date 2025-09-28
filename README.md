@@ -7,18 +7,18 @@ Overview
 - For the deprecated VM automation, see `docs/legacy_proxmox.md`.
 
 Quick Start
-- 1) Run the wizard (local repo):
+- Run the wizard (local repo):
   - `bash home-secnet/scripts/install.sh`
   - Fewer prompts: `bash home-secnet/scripts/install.sh --yes`
-- 2) Render overlay:
+- Render overlay:
   - `make -C home-secnet openwrt-render`
-- 3) Build image (pinned ImageBuilder):
+- Build image (pinned ImageBuilder):
   - Ensure `.env` has `OPENWRT_VERSION`, `OPENWRT_TARGET`, `OPENWRT_PROFILE`, `OPENWRT_SHA256`
   - `make -C home-secnet openwrt-build`
   - Output: `home-secnet/render/images/`
-- 4) Flash image (destructive):
+- Flash image (destructive):
   - `make -C home-secnet openwrt-flash device=/dev/sdX image=home-secnet/render/images/<file>`
-- 5) First boot:
+- First boot:
   - Connect to LAN; follow your device’s OpenWRT install notes if needed.
 
 Details: Build & Flash
