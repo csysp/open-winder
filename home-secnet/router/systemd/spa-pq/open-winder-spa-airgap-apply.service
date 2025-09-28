@@ -1,0 +1,13 @@
+[Unit]
+Description=Apply pre-staged SPA artifacts (air-gapped)
+After=network-online.target
+ConditionPathExists=/opt/router/render/opt/spa/home-secnet-spa-pq
+
+[Service]
+Type=oneshot
+ExecStart=/opt/router/systemd/spa-pq/spa_airgap_apply.sh
+RemainAfterExit=false
+
+[Install]
+WantedBy=multi-user.target
+

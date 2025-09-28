@@ -1,0 +1,21 @@
+config interface 'loopback'
+        option device 'lo'
+        option proto 'static'
+        option ipaddr '127.0.0.1'
+        option netmask '255.0.0.0'
+
+config interface 'lan'
+        option proto 'static'
+        option device '${LAN_IF}'
+        option ipaddr '${LAN_ADDR}'
+        option netmask '${LAN_NETMASK}'
+
+config interface 'wan'
+        option device '${WAN_IF}'
+        option proto 'dhcp'
+
+config interface 'wg0'
+        option proto 'wireguard'
+        option private_key '${WG_SERVER_PRIVKEY}'
+        list addresses '${WG_SERVER_IP}'
+        option listen_port '${WG_PORT}'

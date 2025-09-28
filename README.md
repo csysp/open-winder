@@ -84,25 +84,6 @@ Security Highlights
 Traffic Shaping
 - fq_codel enabled on LAN. Basic rate limiting is supported; more advanced padding/morphing may be added later.
 
-Next Steps
-- Connect a peer using `clients/wg-client1.conf` (or generate a QR with `qrencode`).
-- Move LAN devices to the correct VLAN ports on your switch.
-- Optionally route Proxmox updates through the Router VM’s WireGuard egress.
-
-Notes & Limitations
-- Some downloads (e.g., images) are best‑effort and may require retries.
-- Static WAN: adjust the rendered netplan or extend the render step to write static WAN from `.env`.
-- Email alerts require a mailer. Set SMTP vars in `.env` to relay.
-
-Quick Start
-- Defaults: AdGuard Home with Quad9 DoT and DNSSEC, SPA-gated WireGuard, nftables default-deny.
-- Prereqs: Ubuntu 24.04 host, bash, curl, ssh, nft, wg, `cargo` optional.
-- Steps:
-  - Clone repo and `cd home-secnet`.
-  - Run `make all` to set up `.env`, detect NICs, render, and apply.
-  - Review and adjust `.env` via `home-secnet/scripts/setup_env.sh` (idempotent).
-  - Re-apply router configs anytime with `make router`.
-
 Baremetal Host Networking
 - Provider detection: scripts choose Proxmox if tools are present; otherwise baremetal.
 - Baremetal flow:
