@@ -84,3 +84,8 @@ Testing
 Notes
 - NAT may rewrite source IP; the daemon always binds the allow to the observed source IP. client_ip is carried in the packet for diagnostics only and is NOT included in HMAC.
 - Ensure system clock is roughly correct on both sides (NTP recommended).
+
+OpenWRT Notes
+- nft include path: overlay writes `etc/nftables.d/99-wg-spa.nft`; fw4 loads includes automatically when `custom_chains` is enabled in `/etc/config/firewall` (rendered by overlay).
+- procd unit: overlay installs `/etc/init.d/spa-pq` and enables it on boot via standard OpenWRT service management.
+- Allow set: `set wg_spa_allow { type ipv4_addr; flags timeout; }` is created in the include; entries are added with a timeout equal to `SPA_PQ_OPEN_SECS`.

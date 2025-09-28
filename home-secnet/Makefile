@@ -6,6 +6,7 @@ help:
 	@echo "Targets: all | router | checks | clean"
 	@echo "Dev: fmt | clippy"
 	@echo "Utils: detect-hypervisor"
+	@echo "OpenWRT: openwrt | openwrt-render | openwrt-build | openwrt-flash | checks-openwrt"
 
 all: spa
 	bash scripts/preflight.sh
@@ -96,3 +97,20 @@ security-enable:
 	  scp -o StrictHostKeyChecking=accept-new home-secnet/tools/optional-security/*.sh $${ROUTER_ADMIN_USER}@$${ROUTER_IP}:/tmp/; \
 	  ssh -o StrictHostKeyChecking=accept-new $${ROUTER_ADMIN_USER}@$${ROUTER_IP} "sudo mv /tmp/*.sh /opt/router/security/ && sudo chmod +x /opt/router/security/*.sh && sudo systemctl daemon-reload && sudo systemctl enable --now home-secnet-daily-update.timer home-secnet-daily-lynis.timer home-secnet-daily-rootkit.timer home-secnet-daily-malware.timer"; \
 	  echo "[security] Enabled";'
+
+.PHONY: openwrt openwrt-render openwrt-build openwrt-flash checks-openwrt
+openwrt-render:
+	bash scripts/render_openwrt_overlay.sh
+
+openwrt-build: openwrt-render
+	bash scripts/build_openwrt_image.sh
+
+openwrt:
+	$(MAKE) openwrt-render
+	$(MAKE) openwrt-build
+
+openwrt-flash:
+	bash scripts/flash_openwrt_image.sh --device $(device) $(if $(image),--image $(image),)
+
+checks-openwrt:
+	bash tests/verify_openwrt_overlay.sh
