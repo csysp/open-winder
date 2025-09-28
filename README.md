@@ -1,6 +1,6 @@
 Winder (Router System)
 
-Main branch now targets an OpenWRT-based Winder image with SPA‑gated WireGuard, hardened firewall, and AdGuard+Unbound DNSSEC. The prior Proxmox/Ubuntu VM flow lives on `legacy/proxmox` with a tag `legacy-proxmox-v0`.
+Design vision: OpenWRT-only. This branch targets an OpenWRT-based Winder image with overlayed hardening (SPA-gated WireGuard, nftables, AdGuard+Unbound DNSSEC). Legacy Proxmox/Ubuntu VM automation is not supported here; see `docs/legacy_proxmox.md`.
 
 Quick Start (OpenWRT)
 - Configure: copy `home-secnet/.env.example` to `.env` and adjust `OPENWRT_VERSION`, `OPENWRT_TARGET`, `OPENWRT_PROFILE`, interfaces, WG/SPA vars.
@@ -10,14 +10,14 @@ Quick Start (OpenWRT)
 - Optional: stage SPA binary at `home-secnet/render/opt/spa/home-secnet-spa-pq` before render to embed it into the image. Otherwise, provision `/usr/bin/home-secnet-spa-pq` post‑boot.
 
 Pre-Alpha / Pre-Release
-This project is pre‑alpha. Expect rapid iteration. The legacy Proxmox/Ubuntu VM flow is still available on `legacy/proxmox`.
+This project is pre-alpha. Expect rapid iteration. Legacy VM flow: see `docs/legacy_proxmox.md`.
 
 Make Targets
 - OpenWRT flow: `openwrt-render`, `openwrt-build`, `openwrt-flash`, `checks-openwrt`
 - Dev: `spa`, `fmt`, `clippy`, `rotate-wg-key peer=<name>`
 
-Legacy Provider‑Aware Flow (Ubuntu/Proxmox)
-- See branch `legacy/proxmox` for prior VM‑based automation, Proxmox adapters, and host workflows.
+Legacy Flow
+- See `docs/legacy_proxmox.md` for the deprecated Proxmox/Ubuntu VM automation overview and migration notes.
 
 Baremetal (OpenWRT Image)
 - Build a pinned OpenWRT image with the overlay; flash to storage; boot the device.
@@ -60,11 +60,7 @@ Traffic Shaping
 - fq_codel enabled on LAN. Basic rate limiting is supported; more advanced padding/morphing may be added later.
 
 Baremetal Host Networking
-- Provider detection: scripts choose Proxmox if tools are present; otherwise baremetal.
-- Baremetal flow:
-  - `home-secnet/scripts/configure_host.sh` applies host firewall and prerequisites.
-  - `home-secnet/scripts/apply_router_configs.sh` pushes rendered configs to the router VM/host.
-  - Netplan and nftables are rendered from templates under `home-secnet/router/configs/`.
+- OpenWRT image with overlay. No Proxmox/Ubuntu VM configuration in this branch.
 
 Air-gapped SPA
 - Pre-stage SPA artifacts under `home-secnet/render/opt/spa` to avoid network access on the router during install.
@@ -85,4 +81,3 @@ SPA (PQ‑KEM) Summary
 - Daemon: `home-secnet/router/spa-pq` runs on the router, listening on `SPA_PQ_PORT`, inserting ephemeral allow rules into nftables chain `wg_spa_allow` for `OPEN_SECS`.
 - Client: Rust tool under `home-secnet/clients/spa-pq-client` sends a single knock. Client config template is written to `clients/spa-pq-client.json` during render.
 - See `docs/SPA_PQ.md` for packet format, variables, and troubleshooting.
-

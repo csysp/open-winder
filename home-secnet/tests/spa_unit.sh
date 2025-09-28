@@ -12,12 +12,25 @@ if ! command -v cargo >/dev/null 2>&1; then
 fi
 
 pushd "$ROOT_DIR/clients/spa-pq-client" >/dev/null
-cargo test -q || echo "[spa][client] tests not implemented; placeholder"
+if ! cargo test -q; then
+  if [[ "${ALLOW_PLACEHOLDER_TESTS:-0}" == "1" ]]; then
+    echo "[spa][client] tests missing; allowed by ALLOW_PLACEHOLDER_TESTS=1"
+  else
+    echo "[spa][client] tests missing; set ALLOW_PLACEHOLDER_TESTS=1 to bypass" >&2
+    exit 1
+  fi
+fi
 popd >/dev/null
 
 pushd "$ROOT_DIR/router/spa-pq" >/dev/null
-cargo test -q || echo "[spa][server] tests not implemented; placeholder"
+if ! cargo test -q; then
+  if [[ "${ALLOW_PLACEHOLDER_TESTS:-0}" == "1" ]]; then
+    echo "[spa][server] tests missing; allowed by ALLOW_PLACEHOLDER_TESTS=1"
+  else
+    echo "[spa][server] tests missing; set ALLOW_PLACEHOLDER_TESTS=1 to bypass" >&2
+    exit 1
+  fi
+fi
 popd >/dev/null
 
 echo "[spa] unit scaffolding executed"
-

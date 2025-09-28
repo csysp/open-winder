@@ -1,42 +1,18 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euo pipefail; IFS=$'\n\t'
 
-VERSION="${HYSTERIA_VERSION:-latest}"
 ARCH="linux-amd64"
-INSTALL_DIR="/opt/hysteria"
-BIN="${INSTALL_DIR}/hysteria"
+BIN="/usr/local/bin/hysteria"
 
-mkdir -p "$INSTALL_DIR"
-set -euo pipefail
-apt-get update -y
-apt-get install -y curl tar
-
-dl_latest() {
-  local api="https://api.github.com/repos/apernet/hysteria/releases/latest"
-  curl -fsSL "$api" | grep -Eo "https.*hysteria-${ARCH}\.tar\.gz" | head -n1
-}
-
-dl_version() {
-  local tag="$1"
-  echo "https://github.com/apernet/hysteria/releases/download/${tag}/hysteria-${ARCH}.tar.gz"
-}
-
-URL=""
-if [[ "$VERSION" == "latest" ]]; then
-  URL=$(dl_latest)
-else
-  URL=$(dl_version "$VERSION")
-fi
-
-if [[ -z "$URL" ]]; then
-  echo "[hysteria] Could not determine download URL" >&2
-  exit 1
-fi
-
-TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT
-echo "[hysteria] Downloading: $URL"
-curl -fsSL "$URL" -o "$TMP/hy.tar.gz"
-tar -xzf "$TMP/hy.tar.gz" -C "$TMP"
-install -m 0755 "$TMP/hysteria" "$BIN"
+echo "[hysteria] Installing verified binary..."
+: "${HYSTERIA_URL:?set HYSTERIA_URL to a version-pinned release URL}"
+: "${HYSTERIA_SHA256:?set HYSTERIA_SHA256 to expected sha256}"
+TMP=$(mktemp)
+trap 'rm -f "$TMP"' EXIT
+command -v curl >/dev/null 2>&1 || { echo "missing curl" >&2; exit 1; }
+command -v sha256sum >/dev/null 2>&1 || { echo "missing sha256sum" >&2; exit 1; }
+curl -fsSL "$HYSTERIA_URL" -o "$TMP"
+GOT=$(sha256sum "$TMP" | awk '{print $1}')
+[[ "$GOT" == "$HYSTERIA_SHA256" ]] || { echo "[hysteria] checksum mismatch" >&2; exit 1; }
+install -m 0755 "$TMP" "$BIN"
 echo "[hysteria] Installed to $BIN"

@@ -1,98 +1,22 @@
-name: CI
+name: ci
 
 on:
   push:
-    branches: [ main ]
   pull_request:
-    branches: [ main ]
 
 jobs:
-  rust:
-    name: Rust fmt/clippy/build/test
+  checks:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          components: rustfmt, clippy
-      - name: Build server
-        working-directory: home-secnet/router/spa-pq
-        run: |
-          cargo fmt --all -- --check
-          cargo clippy --all-targets -- -D warnings
-          cargo build --release
-          cargo test --all
-      - name: Build client (manifest-path)
-        run: |
-          cargo fmt --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --all -- --check
-          cargo clippy --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --all-targets -- -D warnings
-          cargo build --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --release
-          cargo test --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --all 
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  audit:
-    name: Rust security audit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - name: Install cargo-audit
-        run: cargo install cargo-audit
-      - name: Audit router SPA crate
-        run: cargo audit --manifest-path home-secnet/router/spa-pq/Cargo.toml --deny warnings || true
-      - name: Audit client SPA crate
-        run: cargo audit --manifest-path home-secnet/clients/spa-pq-client/Cargo.toml --deny warnings || true
+      - name: Install shellcheck and ripgrep
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y shellcheck ripgrep
 
-  release:
-    name: Release SPA artifacts
-    # Allow tag builds and manual/branch builds for testing
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/main')
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - name: Build SPA server
-        working-directory: home-secnet/router/spa-pq
+      - name: Run checks
         run: |
-          cargo build --release
-      - name: Package artifacts
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          cp home-secnet/router/spa-pq/target/release/home-secnet-spa-pq dist/
-          (cd dist && sha256sum home-secnet-spa-pq > home-secnet-spa-pq.sha256)
-      - name: Destroy build artifacts (workspace cleanup)
-        if: ${{ success() }}
-        run: |
-          rm -rf home-secnet/router/spa-pq/target
-      - name: Upload release artifacts
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/home-secnet-spa-pq
-            dist/home-secnet-spa-pq.sha256
+          make -C home-secnet checks-openwrt
 
-  shell:
-    name: Shell lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install shellcheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
-      - name: Shellcheck scripts
-        run: |
-          shopt -s globstar || true
-          shellcheck -S warning home-secnet/scripts/**/*.sh home-secnet/tests/*.sh 

@@ -94,10 +94,12 @@ if [[ -z "${HOST_PROVIDER:-}" ]]; then
 fi
 
 # Apply requested default behaviors in-memory if not set
+ensure_default MODE openwrt
 ensure_default WRAP_MODE hysteria2
 ensure_default DNS_STACK adguard
 ensure_default SPA_ENABLE true
 ensure_default DOUBLE_HOP_ENABLE true
+update_env MODE "${MODE}"
 
 # Randomize WG_PORT once if unset and persist immediately
 if [[ -z "${WG_PORT:-}" ]]; then

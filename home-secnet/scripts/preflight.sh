@@ -18,15 +18,13 @@ USAGE
 if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
   usage; exit 0
 fi
-# shellcheck source=scripts/lib/log.sh
-# shellcheck source=home-secnet/scripts/lib/log.sh
-LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"
-if [[ -f "$LIB_PATH" ]]; then
-  # shellcheck disable=SC1090
-  source "$LIB_PATH"
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1090
+[[ -f "${SCRIPT_DIR}/lib/log.sh" ]] && source "${SCRIPT_DIR}/lib/log.sh"
+# shellcheck disable=SC1090
+source "${SCRIPT_DIR}/lib/env.sh"
 
-log_info "[00] Validating host environment (Linux + Proxmox + tools)..."
+log_info "[00] Validating host environment (Linux + tools)..."
 
 if [[ "$(uname -s)" != "Linux" ]]; then
   log_error "[00] This project targets Linux (Debian/Ubuntu)."
@@ -67,12 +65,6 @@ if (( ${#miss[@]} )); then
   fi
 fi
 
-# Proxmox checks (optional but recommended)
-if ! has qm; then
-  log_warn "[00] Proxmox 'qm' not found. These scripts expect to run on a Proxmox host."
-fi
-if ! has pve-firewall; then
-  log_warn "[00] Proxmox 'pve-firewall' not found. Node firewall step may be skipped."
-fi
+:
 
 log_info "[00] OK."

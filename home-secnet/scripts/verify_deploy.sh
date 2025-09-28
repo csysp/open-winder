@@ -18,13 +18,11 @@ USAGE
 if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
   usage; exit 0
 fi
-# shellcheck source=scripts/lib/log.sh
-# shellcheck source=home-secnet/scripts/lib/log.sh
-LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"
-if [[ -f "$LIB_PATH" ]]; then
-  # shellcheck disable=SC1090
-  source "$LIB_PATH"
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1090
+[[ -f "${SCRIPT_DIR}/lib/log.sh" ]] && source "${SCRIPT_DIR}/lib/log.sh"
+# shellcheck disable=SC1090
+source "${SCRIPT_DIR}/lib/env.sh"
 
 log_info "[12] Running post checks..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

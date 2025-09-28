@@ -1,46 +1,25 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euo pipefail; IFS=$'\n\t'
 
-VERSION="${ADGUARD_VERSION:-latest}"
-ARCH="linux_amd64"
-INSTALL_DIR="/opt/adguard"
-BIN="${INSTALL_DIR}/AdGuardHome"
+BIN="/usr/local/bin/AdGuardHome"
+echo "[adguard] Installing verified AdGuard Home binary..."
+: "${ADGUARD_URL:?set ADGUARD_URL to version-pinned release URL (static binary tar.gz or binary)}"
+: "${ADGUARD_SHA256:?set ADGUARD_SHA256 to expected sha256}"
+TMPDIR=$(mktemp -d)
+trap 'rm -rf "$TMPDIR"' EXIT
+command -v curl >/dev/null 2>&1 || { echo "missing curl" >&2; exit 1; }
+command -v sha256sum >/dev/null 2>&1 || { echo "missing sha256sum" >&2; exit 1; }
+curl -fsSL "$ADGUARD_URL" -o "$TMPDIR/pkg"
+GOT=$(sha256sum "$TMPDIR/pkg" | awk '{print $1}')
+[[ "$GOT" == "$ADGUARD_SHA256" ]] || { echo "[adguard] checksum mismatch" >&2; exit 1; }
 
-mkdir -p "$INSTALL_DIR"
-
-dl_latest() {
-  local api="https://api.github.com/repos/AdguardTeam/AdGuardHome/releases/latest"
-  local url
-  url=$(curl -fsSL "$api" | grep -Eo "https.*AdGuardHome_${ARCH}\.tar\.gz" | head -n1)
-  echo "$url"
-}
-
-dl_version() {
-  local tag="$1"
-  echo "https://github.com/AdguardTeam/AdGuardHome/releases/download/${tag}/AdGuardHome_${ARCH}.tar.gz"
-}
-
-echo "[adguard] Installing AdGuard Home (version: $VERSION)"
-set -euo pipefail
-apt-get update -y
-apt-get install -y curl tar
-
-URL=""
-if [[ "$VERSION" == "latest" ]]; then
-  URL=$(dl_latest)
+# Handle both raw binary and tar.gz package forms
+if file "$TMPDIR/pkg" | grep -qi 'gzip compressed data'; then
+  tar -xzf "$TMPDIR/pkg" -C "$TMPDIR"
+  BIN_SRC=$(find "$TMPDIR" -type f -name AdGuardHome | head -n1 || true)
+  [[ -n "$BIN_SRC" ]] || { echo "[adguard] could not find AdGuardHome in archive" >&2; exit 1; }
+  install -m 0755 "$BIN_SRC" "$BIN"
 else
-  URL=$(dl_version "$VERSION")
+  install -m 0755 "$TMPDIR/pkg" "$BIN"
 fi
-
-if [[ -z "$URL" ]]; then
-  echo "[adguard] Could not determine download URL" >&2
-  exit 1
-fi
-
-TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT
-echo "[adguard] Downloading: $URL"
-curl -fsSL "$URL" -o "$TMP/adguard.tar.gz"
-tar -xzf "$TMP/adguard.tar.gz" -C "$TMP"
-install -m 0755 "$TMP/AdGuardHome/AdGuardHome" "$BIN"
 echo "[adguard] Installed to $BIN"
