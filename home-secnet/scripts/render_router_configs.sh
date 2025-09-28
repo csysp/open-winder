@@ -55,6 +55,10 @@ mask_from_prefix() {
   printf "%d.%d.%d.%d\n" "${m[@]}"
 }
 
+# Map env vars for OpenWRT templates if needed
+export LAN_IF="${LAN_IF:-${ROUTER_LAN_IF:-br-lan}}"
+export WAN_IF="${WAN_IF:-${ROUTER_WAN_IF:-wan}}"
+
 # Render OpenWRT overlay templates (envsubst/perl)
 render_template() {
   local src="$1" dst="$2"
@@ -86,7 +90,7 @@ if [[ -d "$ROOT_DIR/openwrt/templates" ]]; then
     chmod 0755 "$ROOT_DIR/render/openwrt/etc/uci-defaults/99-suricata-enable" || true
   fi
 fi
-
+# Avoid sourcing .env directly elsewhere; lib/env.sh already loaded
 # Write env-vars for templates (to render/, not router/)
 mkdir -p "$ROOT_DIR/render/meta"
 umask 077

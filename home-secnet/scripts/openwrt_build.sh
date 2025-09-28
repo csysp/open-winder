@@ -57,18 +57,10 @@ if [[ "${SURICATA_ENABLE:-false}" == "true" ]]; then
   esac
 fi
 FILES_DIR="${ROOT_DIR}/render/openwrt-files"
-if [[ -d "${ROOT_DIR}/render" ]]; then
-  # Prepare a minimal files/ overlay from rendered artifacts when applicable
-  mkdir -p "$FILES_DIR"
-  # Example: copy SPA binaries into /opt/spa on router
-  if [[ -d "${ROOT_DIR}/render/opt" ]]; then
-    mkdir -p "$FILES_DIR/opt"
-    rsync -a "${ROOT_DIR}/render/opt/" "$FILES_DIR/opt/"
-  fi
-  # Copy router configs if targeting an OpenWRT overlay layout (adjust as needed)
-  if [[ -d "${ROOT_DIR}/render/router" ]]; then
-    rsync -a "${ROOT_DIR}/render/router/" "$FILES_DIR/"
-  fi
+# Prepare a minimal files/ overlay from rendered OpenWRT artifacts only
+mkdir -p "$FILES_DIR"
+if [[ -d "${ROOT_DIR}/render/openwrt" ]]; then
+  rsync -a "${ROOT_DIR}/render/openwrt/" "$FILES_DIR/"
 fi
 
 log_info "[ib] Building image for PROFILE=${OPENWRT_PROFILE}"
