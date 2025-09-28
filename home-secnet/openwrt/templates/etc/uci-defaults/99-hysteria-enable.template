@@ -1,0 +1,26 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+
+if [ "${WRAP_MODE}" = "hysteria2" ]; then
+  mkdir -p /etc/hysteria
+  # Generate a self-signed cert if not present and openssl available
+  if [ ! -f /etc/hysteria/server.crt ] || [ ! -f /etc/hysteria/server.key ]; then
+    if command -v openssl >/dev/null 2>&1; then
+      openssl req -x509 -newkey rsa:2048 -nodes -days 825 -subj "/CN=${WRAP_DOMAIN:-hysteria.local}" -keyout /etc/hysteria/server.key -out /etc/hysteria/server.crt 2>/dev/null || true
+      chmod 600 /etc/hysteria/server.key 2>/dev/null || true
+    else
+      echo "openssl not available; provide /etc/hysteria/server.crt and server.key" > /etc/hysteria/README
+    fi
+  fi
+  # Install pre-staged binary if present in overlay staging
+  if [ -f /opt/hysteria/hysteria ]; then
+    install -m 0755 /opt/hysteria/hysteria /usr/bin/hysteria
+  fi
+  # Enable and start service
+  chmod +x /etc/init.d/hysteria 2>/dev/null || true
+  /etc/init.d/hysteria enable 2>/dev/null || true
+  /etc/init.d/hysteria start 2>/dev/null || true
+fi
+
+exit 0
+

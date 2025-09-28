@@ -1,10 +1,9 @@
-Winder (Router System)
+open-winder
 
 Overview
-- Winder builds on OpenWRT to provide a hardened router image with an overlay: SPA‑gated WireGuard, nftables default‑deny, and AdGuard Home + Unbound (validating DNSSEC). This branch is OpenWRT‑only.
-- Designed for home labs and privacy‑conscious users who want a reproducible, hardened router image on OpenWRT.
+- open-winder builds on OpenWRT to provide a hardened router image with an overlay: SPA‑gated WireGuard, Hysteria2 QUIC wrapper, Suricata with nftables, and AdGuard Home + Unbound (validating DNSSEC).
 - OpenWRT is an outstanding, community‑driven project. Please support and refer to https://openwrt.org for documentation, device support, and ImageBuilder details.
-- For the deprecated VM automation, see `docs/legacy_proxmox.md`.
+- This project is early in development. Expect rapid iteration and general slop code.
 
 Quick Start
 - One-click (safe, no flash):
@@ -31,7 +30,7 @@ Details: Build & Flash
 Requirements
 - Host tools: bash, curl, tar, xz, sha256sum, rsync, ssh. ripgrep (rg) optional for lint.
 - Disk space: ~5–10 GB free for ImageBuilder and artifacts.
-- Network: two NICs recommended (WAN/LAN). For virtualization hosts, see Proxmox Bridges below.
+- Network: two NICs needed (WAN/LAN). For virtualization hosts, see Proxmox Bridges below.
 
 Optional: Proxmox Bridges
 - Optional — Proxmox only: set up `vmbr0` (WAN) and `vmbr1` (LAN) out of the box.
@@ -52,9 +51,6 @@ Security & Options (Short)
 - SPA details: see `docs/SPA_PQ.md`.
  - IDS (optional): set `SURICATA_ENABLE=true` to render Suricata config into the overlay (defaults to `br-lan`). Build auto‑adds the `suricata` package; logs at `/var/log/suricata/eve.json`.
 
-Pre-Alpha / Pre-Release
-- This project is pre-alpha. Expect rapid iteration. Legacy VM flow: see `docs/legacy_proxmox.md`.
-
 Licensing
-- This repository is licensed under GNU GPL-2.0-only. See `LICENSE`.
-- Images built with this repository include OpenWRT and upstream packages and are governed by their respective licenses (primarily GPL-2.0). See https://openwrt.org for details.
+This repository is licensed under GNU GPL-2.0-only. See `LICENSE`.
+Images built with this repository include OpenWRT and upstream packages and are governed by their respective licenses (primarily GPL-2.0). See https://openwrt.org for details.

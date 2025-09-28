@@ -1,0 +1,4 @@
+chain input {
+  # Hysteria2 QUIC wrapper for WireGuard UDP
+  udp dport ${WRAP_LISTEN_PORT} accept
+}
