@@ -14,7 +14,13 @@ openwrt-flash:
 	@echo "[make] Flashing requires device=/dev/sdX image=<path> (interactive)."
 
 lint:
-	@echo "[lint] shellcheck all scripts" && shellcheck $$(rg -l '^#!/usr/bin/env bash' -g 'home-secnet/**/*.sh')
+	@echo "[lint] shellcheck all scripts"
+	@files=$$(find "$(ROOT)" -type f -name '*.sh'); \
+	 if [ -z "$$files" ]; then \
+	   echo "[lint] no shell scripts found"; \
+	 else \
+	   shellcheck $$files; \
+	 fi
 
 tests:
 	@"$(ROOT)/tests/verify_no_generated_in_router.sh"
