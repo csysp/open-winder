@@ -60,3 +60,7 @@ Security & Options (Short)
 
 Pre-Alpha / Pre-Release
 - This project is pre-alpha. Expect rapid iteration. Legacy VM flow: see `docs/legacy_proxmox.md`.
+
+Licensing
+- This repository is licensed under GNU GPL-2.0-only. See `LICENSE`.
+- Images built with this repository include OpenWRT and upstream packages and are governed by their respective licenses (primarily GPL-2.0). See https://openwrt.org for details.
