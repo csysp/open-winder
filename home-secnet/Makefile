@@ -15,13 +15,12 @@ openwrt-flash:
 
 lint:
 	@echo "[lint] shellcheck all scripts"
-	@files=$$(find "$(ROOT)" -type f -name '*.sh'); \
-	 if [ -z "$$files" ]; then \
-	   echo "[lint] no shell scripts found"; \
-	 else \
-	   # -x to follow sources; exclude SC1091 (optional sources) and SC2016 (intentional literals in single quotes)
-	   shellcheck -x -e SC1091 -e SC2016 $$files || true; \
-	 fi
+	@sh -c 'files=$$(find "$(ROOT)" -type f -name "*.sh"); \
+	  if [ -z "$$files" ]; then \
+	    echo "[lint] no shell scripts found"; \
+	  else \
+	    shellcheck -x -e SC1091 -e SC2016 $$files || true; \
+	  fi'
 
 tests:
 	@"$(ROOT)/tests/verify_no_generated_in_router.sh"
