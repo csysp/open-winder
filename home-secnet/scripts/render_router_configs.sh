@@ -70,13 +70,13 @@ render_template() {
 # If OpenWRT overlay templates exist, render them into render/openwrt
 if [[ -d "$ROOT_DIR/openwrt/templates" ]]; then
   export -p >/dev/null 2>&1 || true
-  render_template "$ROOT_DIR/openwrt/templates/etc/config/system.tpl" "$ROOT_DIR/render/openwrt/etc/config/system" 2>/dev/null || true
-  render_template "$ROOT_DIR/openwrt/templates/etc/config/dhcp.tpl" "$ROOT_DIR/render/openwrt/etc/config/dhcp" 2>/dev/null || true
-  render_template "$ROOT_DIR/openwrt/templates/etc/config/network.tpl" "$ROOT_DIR/render/openwrt/etc/config/network" 2>/dev/null || true
-  render_template "$ROOT_DIR/openwrt/templates/etc/config/firewall.tpl" "$ROOT_DIR/render/openwrt/etc/config/firewall" 2>/dev/null || true
-  render_template "$ROOT_DIR/openwrt/templates/etc/adguardhome.yaml.tpl" "$ROOT_DIR/render/openwrt/etc/adguardhome.yaml" 2>/dev/null || true
-  render_template "$ROOT_DIR/openwrt/templates/etc/unbound/unbound.conf.tpl" "$ROOT_DIR/render/openwrt/etc/unbound/unbound.conf" 2>/dev/null || true
-  render_template "$ROOT_DIR/openwrt/templates/etc/nftables.d/99-wg-spa.nft.tpl" "$ROOT_DIR/render/openwrt/etc/nftables.d/99-wg-spa.nft" 2>/dev/null || true
+  render_template "$ROOT_DIR/openwrt/templates/etc/config/system.template" "$ROOT_DIR/render/openwrt/etc/config/system" 2>/dev/null || true
+  render_template "$ROOT_DIR/openwrt/templates/etc/config/dhcp.template" "$ROOT_DIR/render/openwrt/etc/config/dhcp" 2>/dev/null || true
+  render_template "$ROOT_DIR/openwrt/templates/etc/config/network.template" "$ROOT_DIR/render/openwrt/etc/config/network" 2>/dev/null || true
+  render_template "$ROOT_DIR/openwrt/templates/etc/config/firewall.template" "$ROOT_DIR/render/openwrt/etc/config/firewall" 2>/dev/null || true
+  render_template "$ROOT_DIR/openwrt/templates/etc/adguardhome.yaml.template" "$ROOT_DIR/render/openwrt/etc/adguardhome.yaml" 2>/dev/null || true
+  render_template "$ROOT_DIR/openwrt/templates/etc/unbound/unbound.conf.template" "$ROOT_DIR/render/openwrt/etc/unbound/unbound.conf" 2>/dev/null || true
+  render_template "$ROOT_DIR/openwrt/templates/etc/nftables.d/99-wg-spa.nft.template" "$ROOT_DIR/render/openwrt/etc/nftables.d/99-wg-spa.nft" 2>/dev/null || true
 fi
 
 # Write env-vars for templates (to render/, not router/)
