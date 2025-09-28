@@ -118,6 +118,9 @@ if [[ -d "$ROOT_DIR/openwrt/templates" ]]; then
     render_template "$ROOT_DIR/openwrt/templates/etc/config/mwan3.template" "$ROOT_DIR/render/openwrt/etc/config/mwan3" 2>/dev/null || true
   fi
 fi
+
+# OpenWRT-only branch: stop here to avoid legacy VM/Ubuntu render paths
+exit 0
 # Avoid sourcing .env directly elsewhere; lib/env.sh already loaded
 # Write env-vars for templates (to render/, not router/)
 mkdir -p "$ROOT_DIR/render/meta"
