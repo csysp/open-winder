@@ -13,6 +13,9 @@ cat >"$ENV_FILE" <<EOF
 MODE=openwrt
 ROUTER_LAN_IF=br-lan
 ROUTER_WAN_IF=wan
+WG_PORT=51820
+WG_SERVER_PRIVKEY=dummykey
+WG_SERVER_IP=10.0.0.1/24
 EOF
 
 "$ROOT_DIR/scripts/render_router_configs.sh" >/dev/null 2>&1 || true
