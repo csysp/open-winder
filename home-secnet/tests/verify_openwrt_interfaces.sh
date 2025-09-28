@@ -5,9 +5,15 @@ set -euo pipefail; IFS=$'\n\t'
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Prepare minimal env for render
-export ROUTER_LAN_IF="br-lan"
-export ROUTER_WAN_IF="wan"
+# Prepare minimal .env for render (simulate real flow)
+ENV_FILE="$ROOT_DIR/.env"
+backup=""
+if [[ -f "$ENV_FILE" ]]; then backup="${ENV_FILE}.bak$$"; cp -f "$ENV_FILE" "$backup"; fi
+cat >"$ENV_FILE" <<EOF
+MODE=openwrt
+ROUTER_LAN_IF=br-lan
+ROUTER_WAN_IF=wan
+EOF
 
 "$ROOT_DIR/scripts/render_router_configs.sh" >/dev/null 2>&1 || true
 
@@ -15,6 +21,8 @@ cfg_net="$ROOT_DIR/render/openwrt/etc/config/network"
 
 if [[ ! -f "$cfg_net" ]]; then
   echo "[verify] network config not rendered at $cfg_net" >&2
+  # restore env and fail
+  if [[ -n "$backup" ]]; then mv -f "$backup" "$ENV_FILE"; else rm -f "$ENV_FILE"; fi
   exit 1
 fi
 
@@ -23,12 +31,16 @@ wan_val=$(grep -E "config +interface +'?wan'?|option +device +'?wan'?" -i "$cfg_
 
 if [[ -z "$lan_val" ]]; then
   echo "[verify] LAN_IF did not render into network config" >&2
+  if [[ -n "$backup" ]]; then mv -f "$backup" "$ENV_FILE"; else rm -f "$ENV_FILE"; fi
   exit 1
 fi
 if [[ -z "$wan_val" ]]; then
   echo "[verify] WAN_IF did not render into network config" >&2
+  if [[ -n "$backup" ]]; then mv -f "$backup" "$ENV_FILE"; else rm -f "$ENV_FILE"; fi
   exit 1
 fi
 
 echo "[verify] OpenWRT interfaces rendered (LAN_IF/WAN_IF present)."
 
+# restore env
+if [[ -n "$backup" ]]; then mv -f "$backup" "$ENV_FILE"; else rm -f "$ENV_FILE"; fi
