@@ -1,9 +1,8 @@
-open-winder
-
 Overview
-- open-winder builds on OpenWRT to provide a hardened router image with an overlay: SPA‑gated WireGuard, Hysteria2 QUIC wrapper, Suricata with nftables, and AdGuard Home + Unbound (validating DNSSEC).
-- OpenWRT is an outstanding, community‑driven project. Please support and refer to https://openwrt.org for documentation, device support, and ImageBuilder details.
-- This project is early in development. Expect rapid iteration and general slop code.
+open-winder builds on OpenWRT to provide a hardened router image with an overlay: SPA‑gated WireGuard, Hysteria2 QUIC wrapper, Suricata overtop nftables and AdGuard Home + Unbound (validating DNSSEC).
+OpenWRT is an outstanding, community‑driven project that I personally admire alot. Please support and refer to https://openwrt.org for documentation, device support, and ImageBuilder details.
+
+This project is early in development. Expect rapid iteration and general slop code.
 
 Quick Start
 - One-click (safe, no flash):
