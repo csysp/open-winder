@@ -19,4 +19,23 @@ jobs:
       - name: Run checks
         run: |
           make -C home-secnet checks-openwrt
-
+      - name: Guard against legacy paths reintroduction
+        run: |
+          set -euo pipefail
+          banned=(
+            "home-secnet/scripts/build_openwrt_image.sh"
+            "home-secnet/scripts/render_openwrt_overlay.sh"
+            "home-secnet/scripts/install_winder.sh"
+            "home-secnet/scripts/configure_host.sh"
+            "home-secnet/scripts/create_router_vm.sh"
+            "home-secnet/scripts/prepare_cloud_image.sh"
+            "home-secnet/scripts/detect_hypervisor.sh"
+            "home-secnet/scripts/providers/baremetal/"
+            "home-secnet/scripts/providers/proxmox/apply_node_firewall.sh"
+          )
+          for p in "${banned[@]}"; do
+            if git ls-files -- "$p" | grep -q .; then
+              echo "[ci] Banned legacy path present: $p" >&2
+              exit 1
+            fi
+          done

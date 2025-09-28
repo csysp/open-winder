@@ -19,3 +19,13 @@ home-secnet/clients/spa-pq-client/target/
 # OS files
 .DS_Store
 Thumbs.db
+# Prevent reintroducing legacy VM/host scripts into active surface
+home-secnet/scripts/build_openwrt_image.sh
+home-secnet/scripts/render_openwrt_overlay.sh
+home-secnet/scripts/install_winder.sh
+home-secnet/scripts/configure_host.sh
+home-secnet/scripts/create_router_vm.sh
+home-secnet/scripts/prepare_cloud_image.sh
+home-secnet/scripts/detect_hypervisor.sh
+home-secnet/scripts/providers/baremetal/
+home-secnet/scripts/providers/proxmox/apply_node_firewall.sh
