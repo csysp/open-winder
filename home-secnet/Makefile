@@ -26,6 +26,7 @@ tests:
 	@"$(ROOT)/tests/verify_no_generated_in_router.sh"
 	@"$(ROOT)/tests/spa_unit.sh" || true
 	@"$(ROOT)/tests/verify_no_smarty.sh"
+	@"$(ROOT)/tests/verify_openwrt_interfaces.sh"
 
 checks-openwrt: lint tests
 
