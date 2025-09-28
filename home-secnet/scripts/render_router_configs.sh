@@ -80,6 +80,10 @@ if [[ -d "$ROOT_DIR/openwrt/templates" ]]; then
   # Suricata (optional)
   if [[ "${SURICATA_ENABLE:-false}" == "true" ]]; then
     render_template "$ROOT_DIR/openwrt/templates/etc/suricata/suricata.yaml.template" "$ROOT_DIR/render/openwrt/etc/suricata/suricata.yaml" 2>/dev/null || true
+    render_template "$ROOT_DIR/openwrt/templates/etc/init.d/suricata.template" "$ROOT_DIR/render/openwrt/etc/init.d/suricata" 2>/dev/null || true
+    chmod 0755 "$ROOT_DIR/render/openwrt/etc/init.d/suricata" || true
+    render_template "$ROOT_DIR/openwrt/templates/etc/uci-defaults/99-suricata-enable.template" "$ROOT_DIR/render/openwrt/etc/uci-defaults/99-suricata-enable" 2>/dev/null || true
+    chmod 0755 "$ROOT_DIR/render/openwrt/etc/uci-defaults/99-suricata-enable" || true
   fi
 fi
 

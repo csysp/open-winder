@@ -1,0 +1,16 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+
+if [ "${SURICATA_ENABLE}" = "true" ]; then
+  # Ensure service enabled and started
+  chmod +x /etc/init.d/suricata 2>/dev/null || true
+  /etc/init.d/suricata enable 2>/dev/null || true
+  /etc/init.d/suricata start 2>/dev/null || true
+
+  # Strong listening posture: bind only to LAN bridge by default
+  # (Actual interface list is passed via init using SURICATA_IFACES)
+  echo "suricata enabled on: ${SURICATA_IFACES}" >/etc/suricata/enable.info 2>/dev/null || true
+fi
+
+exit 0
+
