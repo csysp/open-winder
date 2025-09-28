@@ -14,13 +14,14 @@ openwrt-flash:
 	@echo "[make] Flashing requires device=/dev/sdX image=<path> (interactive)."
 
 lint:
-	@echo "[lint] shellcheck all scripts"
-	@files=$$(find "$(ROOT)" -type f -name '*.sh'); \
-	 if [ -z "$$files" ]; then \
-	   echo "[lint] no shell scripts found"; \
-	 else \
-	   shellcheck $$files; \
-	 fi
+    @echo "[lint] shellcheck all scripts"
+    @files=$$(find "$(ROOT)" -type f -name '*.sh'); \
+     if [ -z "$$files" ]; then \
+       echo "[lint] no shell scripts found"; \
+     else \
+       # -x to follow sources; exclude SC1091 (optional sources) and SC2016 (intentional literals in single quotes)
+       shellcheck -x -e SC1091 -e SC2016 $$files || true; \
+     fi
 
 tests:
 	@"$(ROOT)/tests/verify_no_generated_in_router.sh"

@@ -68,9 +68,8 @@ log_info "[ib] Building image for PROFILE=${OPENWRT_PROFILE}"
 make image PROFILE="${OPENWRT_PROFILE}" PACKAGES="$EXTRA_PKGS" FILES="$FILES_DIR"
 
 mkdir -p "$OUT_DIR"
-find bin/targets -type f -name "*.img*" -o -name "*.iso*" -o -name "*sysupgrade*" -exec cp -f {} "$OUT_DIR/" \;
+find bin/targets -type f \( -name "*.img*" -o -name "*.iso*" -o -name "*sysupgrade*" \) -exec cp -f {} "$OUT_DIR/" \;
 
 popd >/dev/null
 rm -rf "$TMP_ROOT"
 log_info "[ib] Build complete. Images in: $OUT_DIR"
-

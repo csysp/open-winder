@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 set -euo pipefail; IFS=$'\n\t'
 
-ARCH="linux-amd64"
 BIN="/usr/local/bin/hysteria"
 
 echo "[hysteria] Installing verified binary..."

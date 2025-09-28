@@ -41,10 +41,10 @@ fi
 if [[ "$EGRESS_KBIT" =~ ^[0-9]+$ && "$EGRESS_KBIT" -gt 0 ]]; then
   echo "[tc] Configure egress on $WAN (${EGRESS_KBIT}kbit)"
   if [[ "$has_cake" == true ]]; then
-    run tc qdisc replace dev "$WAN" root cake bandwidth ${EGRESS_KBIT}kbit ${DIFFSERV_ARG} nat
+    run tc qdisc replace dev "$WAN" root cake bandwidth "${EGRESS_KBIT}"kbit ${DIFFSERV_ARG} nat
   else
     run tc qdisc replace dev "$WAN" root handle 1: htb default 10
-    run tc class replace dev "$WAN" parent 1: classid 1:10 htb rate ${EGRESS_KBIT}kbit ceil ${EGRESS_KBIT}kbit
+    run tc class replace dev "$WAN" parent 1: classid 1:10 htb rate "${EGRESS_KBIT}"kbit ceil "${EGRESS_KBIT}"kbit
     run tc qdisc replace dev "$WAN" parent 1:10 handle 10: fq_codel ecn
   fi
 else
@@ -61,10 +61,10 @@ if [[ "$INGRESS_KBIT" =~ ^[0-9]+$ && "$INGRESS_KBIT" -gt 0 ]]; then
   run tc qdisc replace dev "$WAN" handle ffff: ingress
   run tc filter replace dev "$WAN" parent ffff: matchall action mirred egress redirect dev ifb0
   if [[ "$has_cake" == true ]]; then
-    run tc qdisc replace dev ifb0 root cake bandwidth ${INGRESS_KBIT}kbit ${DIFFSERV_ARG}
+    run tc qdisc replace dev ifb0 root cake bandwidth "${INGRESS_KBIT}"kbit ${DIFFSERV_ARG}
   else
     run tc qdisc replace dev ifb0 root handle 1: htb default 10
-    run tc class replace dev ifb0 parent 1: classid 1:10 htb rate ${INGRESS_KBIT}kbit ceil ${INGRESS_KBIT}kbit
+    run tc class replace dev ifb0 parent 1: classid 1:10 htb rate "${INGRESS_KBIT}"kbit ceil "${INGRESS_KBIT}"kbit
     run tc qdisc replace dev ifb0 parent 1:10 handle 10: fq_codel ecn
   fi
 else
