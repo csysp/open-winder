@@ -13,6 +13,11 @@ Quick Start
 - Build image: `make -C home-secnet openwrt-build`
 - Flash (destructive): `make -C home-secnet openwrt-flash device=/dev/sdX image=<image>`
 
+Renderer
+- The renderer only handles the OpenWRT overlay and exits immediately after writing `render/openwrt/**`.
+- Legacy VM/"flat" or ultralight flows are not part of this path and do not run in CI.
+- An experimental ultralight renderer is parked at `home-secnet/scripts/render_ultralight.sh` (not wired into CI or Make).
+
 Key Env Vars
 - `OPENWRT_VERSION`, `OPENWRT_TARGET`, `OPENWRT_PROFILE`, `OPENWRT_IB_SHA256`
 - `LAN_IF`, `WAN_IF` (fallback to `ROUTER_LAN_IF`/`ROUTER_WAN_IF`)
@@ -21,11 +26,10 @@ Key Env Vars
 - `SPA_ENABLE=true`, `SPA_MODE=pqkem`, `SPA_PQ_*` (PSK is auto-generated if missing)
 
 Outputs
-- Rendered overlay: `home-secnet/render/openwrt/overlay`
+- Rendered overlay: `home-secnet/render/openwrt/**`
 - Built images: `home-secnet/render/openwrt/image`
 
 Notes
 - The overlay render does not commit secrets; rendered files live under `render/` (ignored by git).
 - If `wg` is not installed locally, the WG private key is left blank and should be provisioned on device.
 - IDS is heavy; leave `IDS_ENABLE=false` unless your device has enough RAM/CPU.
-

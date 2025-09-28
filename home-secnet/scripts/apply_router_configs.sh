@@ -225,9 +225,6 @@ if [[ "${SPA_ENABLE}" == "true" ]]; then
     sudo systemctl enable --now spa-pq.service
     # Ensure fwknopd is stopped if previously installed
     sudo systemctl disable --now fwknopd 2>/dev/null || echo "[09] fwknopd not present" >&2
-  else
-    echo "[router] Legacy fwknop mode is no longer supported. Set SPA_MODE=pqkem."
-    exit 1
   fi
 fi
 
