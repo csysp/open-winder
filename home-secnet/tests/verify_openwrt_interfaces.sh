@@ -24,6 +24,11 @@ cfg_net="$ROOT_DIR/render/openwrt/etc/config/network"
 
 if [[ ! -f "$cfg_net" ]]; then
   echo "[verify] network config not rendered at $cfg_net" >&2
+  echo "[verify][debug] ROOT_DIR=$ROOT_DIR" >&2
+  echo "[verify][debug] Listing rendered files under render/:" >&2
+  find "$ROOT_DIR/render" -maxdepth 4 -type f -print >&2 || true
+  echo "[verify][debug] Available templates:" >&2
+  find "$ROOT_DIR/openwrt/templates/etc/config" -maxdepth 1 -type f -print >&2 || true
   # restore env and fail
   if [[ -n "$backup" ]]; then mv -f "$backup" "$ENV_FILE"; else rm -f "$ENV_FILE"; fi
   exit 1
