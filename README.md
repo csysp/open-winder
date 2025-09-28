@@ -1,6 +1,6 @@
-Overview
 open-winder builds on OpenWRT to provide a hardened router image with an overlay: SPA‑gated WireGuard, Hysteria2 QUIC wrapper, Suricata overtop nftables and AdGuard Home + Unbound (validating DNSSEC).
-OpenWRT is an outstanding, community‑driven project that I personally admire alot. Please support and refer to https://openwrt.org for documentation, device support, and ImageBuilder details.
+OpenWRT is an outstanding, community‑driven project that I personally admire alot.
+Please support and refer to https://openwrt.org for documentation, device support, and ImageBuilder details.
 
 This project is early in development. Expect rapid iteration and general slop code.
 
@@ -26,11 +26,6 @@ Details: Build & Flash
 - Safety
   - Flashing is destructive. Double-check `device=/dev/sdX` and the chosen image.
 
-Requirements
-- Host tools: bash, curl, tar, xz, sha256sum, rsync, ssh. ripgrep (rg) optional for lint.
-- Disk space: ~5–10 GB free for ImageBuilder and artifacts.
-- Network: two NICs needed (WAN/LAN). For virtualization hosts, see Proxmox Bridges below.
-
 Optional: Proxmox Bridges
 - Optional — Proxmox only: set up `vmbr0` (WAN) and `vmbr1` (LAN) out of the box.
 - Use the wizard (it will prompt), or run explicitly:
@@ -49,6 +44,11 @@ Security & Options (Short)
 - Logging (optional): set `RSYSLOG_FORWARD_ENABLE=true` and `RSYSLOG_REMOTE=host:port` to forward SPA/auth/IDS logs.
 - SPA details: see `docs/SPA_PQ.md`.
  - IDS: Suricata enabled by default (LAN `br-lan`). Overlay renders `/etc/suricata/suricata.yaml`; build auto-adds `suricata`; logs at `/var/log/suricata/eve.json`.
+
+Requirements
+- Host tools: bash, curl, tar, xz, sha256sum, rsync, ssh. ripgrep (rg) optional for lint.
+- Disk space: ~5–10 GB free for ImageBuilder and artifacts.
+- Network: two NICs needed (WAN/LAN). For virtualization hosts, see Proxmox Bridges below.
 
 Licensing
 This repository is licensed under GNU GPL-2.0-only. See `LICENSE`.
