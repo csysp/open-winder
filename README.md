@@ -50,6 +50,7 @@ Security & Options (Short)
 - Double‑hop (optional): set `DOUBLE_HOP_ENABLE=true` and `WG2_*` in `.env` for upstream egress via another WireGuard exit.
 - Logging (optional): set `RSYSLOG_FORWARD_ENABLE=true` and `RSYSLOG_REMOTE=host:port` to forward SPA/auth/IDS logs.
 - SPA details: see `docs/SPA_PQ.md`.
+ - IDS (optional): set `SURICATA_ENABLE=true` to render Suricata config into the overlay (defaults to `br-lan`). Build auto‑adds the `suricata` package; logs at `/var/log/suricata/eve.json`.
 
 Pre-Alpha / Pre-Release
 - This project is pre-alpha. Expect rapid iteration. Legacy VM flow: see `docs/legacy_proxmox.md`.

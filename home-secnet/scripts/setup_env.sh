@@ -101,6 +101,19 @@ ensure_default SPA_ENABLE true
 ensure_default DOUBLE_HOP_ENABLE true
 update_env MODE "${MODE}"
 
+# Suricata defaults and notice
+ensure_default SURICATA_ENABLE false
+ensure_default SURICATA_IFACES br-lan
+ensure_default SURICATA_EVE_ENABLE true
+ensure_default SURICATA_HOME_NET "[192.168.1.0/24]"
+update_env SURICATA_ENABLE "${SURICATA_ENABLE}"
+update_env SURICATA_IFACES "${SURICATA_IFACES}"
+update_env SURICATA_EVE_ENABLE "${SURICATA_EVE_ENABLE}"
+update_env SURICATA_HOME_NET "${SURICATA_HOME_NET}"
+if [[ "${SURICATA_ENABLE}" == "true" ]]; then
+  echo "[wiz] SURICATA_ENABLE=true: 'suricata' will be appended to OPENWRT_PACKAGES during build." >&2
+fi
+
 # Randomize WG_PORT once if unset and persist immediately
 if [[ -z "${WG_PORT:-}" ]]; then
   WG_PORT=$(( (RANDOM % 41000) + 20000 ))

@@ -77,6 +77,10 @@ if [[ -d "$ROOT_DIR/openwrt/templates" ]]; then
   render_template "$ROOT_DIR/openwrt/templates/etc/adguardhome.yaml.template" "$ROOT_DIR/render/openwrt/etc/adguardhome.yaml" 2>/dev/null || true
   render_template "$ROOT_DIR/openwrt/templates/etc/unbound/unbound.conf.template" "$ROOT_DIR/render/openwrt/etc/unbound/unbound.conf" 2>/dev/null || true
   render_template "$ROOT_DIR/openwrt/templates/etc/nftables.d/99-wg-spa.nft.template" "$ROOT_DIR/render/openwrt/etc/nftables.d/99-wg-spa.nft" 2>/dev/null || true
+  # Suricata (optional)
+  if [[ "${SURICATA_ENABLE:-false}" == "true" ]]; then
+    render_template "$ROOT_DIR/openwrt/templates/etc/suricata/suricata.yaml.template" "$ROOT_DIR/render/openwrt/etc/suricata/suricata.yaml" 2>/dev/null || true
+  fi
 fi
 
 # Write env-vars for templates (to render/, not router/)

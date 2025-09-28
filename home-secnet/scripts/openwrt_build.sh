@@ -49,6 +49,13 @@ pushd "$IB_DIR" >/dev/null
 
 # Packages and files
 EXTRA_PKGS="${OPENWRT_PACKAGES:-}"  # optional space-separated list in .env
+# Auto-append Suricata if enabled
+if [[ "${SURICATA_ENABLE:-false}" == "true" ]]; then
+  case " $EXTRA_PKGS " in
+    *" suricata "*) : ;; 
+    *) echo "[ib] SURICATA_ENABLE=true → adding 'suricata' to OPENWRT_PACKAGES"; EXTRA_PKGS="${EXTRA_PKGS} suricata" ;;
+  esac
+fi
 FILES_DIR="${ROOT_DIR}/render/openwrt-files"
 if [[ -d "${ROOT_DIR}/render" ]]; then
   # Prepare a minimal files/ overlay from rendered artifacts when applicable

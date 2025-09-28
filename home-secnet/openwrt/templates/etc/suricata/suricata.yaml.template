@@ -1,0 +1,52 @@
+%YAML 1.1
+---
+vars:
+  address-groups:
+    HOME_NET: ${SURICATA_HOME_NET}
+
+af-packet:
+  - interface: ${SURICATA_IFACES}
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    use-mmap: yes
+
+outputs:
+  - eve-log:
+      enabled: ${SURICATA_EVE_ENABLE}
+      filetype: regular
+      filename: /var/log/suricata/eve.json
+      community-id: true
+      community-id-seed: 0
+      types:
+        - alert
+        - http
+        - dns
+        - tls
+        - flow
+
+logging:
+  default-log-level: info
+  outputs:
+    - console:
+        enabled: no
+    - file:
+        enabled: yes
+        filename: /var/log/suricata/suricata.log
+
+detect:
+  profile: medium
+  sgh-mpm-context: auto
+  prefilter: yes
+  no-type-warnings: yes
+
+app-layer:
+  protocols:
+    http:
+      enabled: yes
+    tls:
+      enabled: yes
+    dns:
+      enabled: yes
+
+%include /etc/suricata/rules/*.rules
