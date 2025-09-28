@@ -21,6 +21,13 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
 fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# Ensure render roots exist as early as possible (CI-safe)
+mkdir -p "$ROOT_DIR/render" \
+"$ROOT_DIR/render/openwrt/etc/config" \
+"$ROOT_DIR/render/openwrt/etc/nftables.d" \
+"$ROOT_DIR/render/openwrt/etc/init.d" \
+"$ROOT_DIR/render/openwrt/etc/uci-defaults" \
+"$ROOT_DIR/render/openwrt/etc/hysteria" || true
 # shellcheck disable=SC1090
 [[ -f "${SCRIPT_DIR}/lib/log.sh" ]] && source "${SCRIPT_DIR}/lib/log.sh"
 # shellcheck disable=SC1090
