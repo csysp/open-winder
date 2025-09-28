@@ -27,6 +27,9 @@ tests:
 	@"$(ROOT)/tests/spa_unit.sh" || true
 	@"$(ROOT)/tests/verify_no_smarty.sh"
 	@"$(ROOT)/tests/verify_openwrt_interfaces.sh"
+	@"$(ROOT)/tests/verify_suricata_overlay.sh"
+	@"$(ROOT)/tests/verify_hysteria_overlay.sh"
+	@"$(ROOT)/tests/verify_sqm_overlay.sh"
 
 checks-openwrt: lint tests
 
