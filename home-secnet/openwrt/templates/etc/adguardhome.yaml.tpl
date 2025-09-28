@@ -18,4 +18,3 @@ filters:
     url: https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt
     name: AdGuard Base Minimal
     id: 1
-

@@ -39,12 +39,6 @@ config rule
         option dest_port '53'
         option target 'ACCEPT'
 
-config rule
-        option name 'Allow-Established-Related'
-        option src '*'
-        option dest '*'
-        option proto 'all'
-        option family 'any'
-        option target 'ACCEPT'
-        option extra '-m conntrack --ctstate RELATED,ESTABLISHED'
-
+config include
+        option type 'nftables'
+        option path '/etc/nftables.d/99-wg-spa.nft'

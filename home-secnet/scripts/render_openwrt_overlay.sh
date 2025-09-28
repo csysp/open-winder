@@ -125,9 +125,36 @@ render_tpl "$TEMPLATES_DIR/etc/config/system.tpl" \
 
 # DNS stack files
 render_tpl "$TEMPLATES_DIR/etc/adguardhome.yaml.tpl" \
-  "$RENDER_DIR/etc/adguardhome.yaml"
+  "$RENDER_DIR/etc/AdGuardHome.yaml"
 render_tpl "$TEMPLATES_DIR/etc/unbound/unbound.conf.tpl" \
   "$RENDER_DIR/etc/unbound/unbound.conf"
+
+# First boot enablement and config includes
+render_tpl "$TEMPLATES_DIR/etc/uci-defaults/99-winder-defaults.tpl" \
+  "$RENDER_DIR/etc/uci-defaults/99-winder-defaults"
+chmod 0755 "$RENDER_DIR/etc/uci-defaults/99-winder-defaults"
+
+# Optionally embed SPA binary if staged locally
+maybe_embed_spa() {
+  local bin_dest="$RENDER_DIR/usr/bin/home-secnet-spa-pq"
+  local staged=""
+  if [[ -f "$ROOT_DIR/render/opt/spa/home-secnet-spa-pq" ]]; then
+    staged="$ROOT_DIR/render/opt/spa/home-secnet-spa-pq"
+  else
+    staged="$(ls -1 $ROOT_DIR/router/spa-pq/target/*/release/home-secnet-spa-pq 2>/dev/null | head -n1 || true)"
+  fi
+  if [[ -n "$staged" ]]; then
+    mkdir -p "$(dirname "$bin_dest")"
+    install -m 0755 "$staged" "$bin_dest"
+    log_info "Embedded SPA binary: $(basename "$staged")"
+  else
+    log_warn "SPA binary not staged; /etc/init.d/spa-pq may fail until binary is provisioned at /usr/bin/home-secnet-spa-pq"
+  fi
+}
+
+if [[ "${SPA_ENABLE}" == "true" && "${SPA_MODE}" == "pqkem" ]]; then
+  maybe_embed_spa
+fi
 
 # Secrets: SPA PSK
 if [[ "${SPA_ENABLE}" == "true" && "${SPA_MODE}" == "pqkem" ]]; then
@@ -143,3 +170,4 @@ echo "- nft gate:     etc/nftables.d/99-wg-spa.nft"
 echo "- spa service:  etc/init.d/spa-pq"
 echo "- uci configs:  etc/config/{network,firewall,dhcp,system}"
 echo "- dns:          etc/adguardhome.yaml + etc/unbound/unbound.conf"
+echo "- first-boot:   etc/uci-defaults/99-winder-defaults"
