@@ -26,6 +26,14 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # shellcheck disable=SC1090
 source "${SCRIPT_DIR}/lib/env.sh"
 
+# Ensure OpenWRT overlay base directories always exist (CI-safe)
+export -p >/dev/null 2>&1 || true
+mkdir -p "$ROOT_DIR/render/openwrt/etc/config" \
+"$ROOT_DIR/render/openwrt/etc/nftables.d" \
+"$ROOT_DIR/render/openwrt/etc/init.d" \
+"$ROOT_DIR/render/openwrt/etc/uci-defaults" \
+"$ROOT_DIR/render/openwrt/etc/hysteria" || true
+
 log_info "[08] Rendering router configs from .env and generating keys..."
 
 mkdir -p "$ROOT_DIR/render/router/configs" "$ROOT_DIR/clients"
@@ -76,14 +84,6 @@ render_template() {
     perl -M5.010 -pe 's/\$\{([A-Z0-9_]+)\}/defined $ENV{$1} ? $ENV{$1} : ""/ge' "$src" > "$dst"
   fi
 }
-
-# Ensure OpenWRT overlay base directories always exist (CI-safe)
-export -p >/dev/null 2>&1 || true
-mkdir -p "$ROOT_DIR/render/openwrt/etc/config" \
-"$ROOT_DIR/render/openwrt/etc/nftables.d" \
-"$ROOT_DIR/render/openwrt/etc/init.d" \
-"$ROOT_DIR/render/openwrt/etc/uci-defaults" \
-"$ROOT_DIR/render/openwrt/etc/hysteria" || true
 
 # If OpenWRT overlay templates exist, render them into render/openwrt
 if [[ -d "$ROOT_DIR/openwrt/templates" ]]; then
