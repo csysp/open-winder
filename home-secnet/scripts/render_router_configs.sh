@@ -36,6 +36,10 @@ if ! declare -f log_info >/dev/null 2>&1; then
   log_info() { echo "$*"; }
   log_warn() { echo "$*" >&2; }
 fi
+# If env loader set ROOT_DIR incorrectly (e.g., to scripts/), fix it to project root
+if [[ ! -d "$ROOT_DIR/openwrt/templates" ]]; then
+  ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+fi
 # Ensure render roots exist as early as possible (CI-safe)
 mkdir -p "$ROOT_DIR/render" \
 "$ROOT_DIR/render/openwrt/etc/config" \

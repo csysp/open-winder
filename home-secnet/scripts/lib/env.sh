@@ -5,7 +5,8 @@ set -euo pipefail; IFS=$'\n\t'
 # Loads .env.example then .env (if present), enforces MODE and required vars.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+# scripts/lib -> project root is two levels up
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 load_env() {
   set +u
