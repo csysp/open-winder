@@ -43,6 +43,9 @@ Security & Options (Short)
 - SPA details: see `docs/SPA_PQ.md`.
 - IDS: Suricata enabled by default (LAN `br-lan`). Overlay renders `/etc/suricata/suricata.yaml`; build auto-adds `suricata`; logs at `/var/log/suricata/eve.json`.
 
+Security
+See `SECURITY.md` for an overview of defaults, the SPA control plane, handling of secrets, and how to report vulnerabilities. The project favors a default‑deny stance and keeps rendered secrets out of the repository.
+
 Requirements
 - Host tools: bash, curl, tar, xz, sha256sum, rsync, ssh. ripgrep (rg) optional for lint.
 - Disk space: ~5–10 GB free for ImageBuilder and artifacts.

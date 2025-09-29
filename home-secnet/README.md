@@ -14,9 +14,7 @@ Quick Start
 - Flash (destructive): `make -C home-secnet openwrt-flash device=/dev/sdX image=<image>`
 
 Renderer
-- The renderer only handles the OpenWRT overlay and exits immediately after writing `render/openwrt/**`.
-- Legacy VM/"flat" or ultralight flows are not part of this path and do not run in CI.
-- An experimental ultralight renderer is parked at `home-secnet/scripts/render_ultralight.sh` (not wired into CI or Make).
+The renderer is OpenWRT-only. It loads your `.env` when present, writes the overlay under `home-secnet/render/openwrt/**`, renders the SPA‑PQ init script and marks it executable under `render/openwrt/etc/init.d/`, then exits. The produced `etc` tree is also copied into `render/openwrt/overlay/` to simplify image builds. Legacy VM or “flat” flows are outside this path and are not exercised by CI. An experimental ultralight renderer remains at `home-secnet/scripts/render_ultralight.sh` and is intentionally not wired into CI or Make.
 
 Key Env Vars
 - `OPENWRT_VERSION`, `OPENWRT_TARGET`, `OPENWRT_PROFILE`, `OPENWRT_IB_SHA256`
