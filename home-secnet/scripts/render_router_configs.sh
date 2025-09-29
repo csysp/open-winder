@@ -24,6 +24,13 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # Load environment via common helper (loads .env.example then .env)
 # shellcheck disable=SC1090
 [[ -f "${SCRIPT_DIR}/lib/env.sh" ]] && source "${SCRIPT_DIR}/lib/env.sh"
+# shellcheck disable=SC1090
+[[ -f "${SCRIPT_DIR}/lib/log.sh" ]] && source "${SCRIPT_DIR}/lib/log.sh"
+# Fallback logger for CI if log.sh was not sourced for any reason
+if ! declare -f log_info >/dev/null 2>&1; then
+  log_info() { echo "$*"; }
+  log_warn() { echo "$*" >&2; }
+fi
 # Ensure render roots exist as early as possible (CI-safe)
 mkdir -p "$ROOT_DIR/render" \
 "$ROOT_DIR/render/openwrt/etc/config" \

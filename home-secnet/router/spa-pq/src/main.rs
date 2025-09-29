@@ -335,8 +335,9 @@ fn handle_packet(
     psk: &[u8],
     window_secs: i64,
     open_secs: u64,
+    nft_family: &str,
     nft_table: &str,
-    nft_chain: &str,
+    nft_set: &str,
     _wg_port: u16,
     // replay cache shared from caller
     replay_cache: &mut ReplayCache,
@@ -398,7 +399,7 @@ fn handle_packet(
     mac.verify_slice(tag).map_err(|_| SpaError::BadHmac)?;
 
     // insert allow set element for src ip with timeout
-    add_allow_set_entry(nft_table, nft_chain, src_ip, open_secs)?;
+    add_allow_set_entry(nft_family, nft_table, nft_set, src_ip, open_secs)?;
 
     // log allow
     let line = LogLine {
