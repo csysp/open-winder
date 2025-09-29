@@ -27,7 +27,6 @@ source "${SCRIPT_DIR}/lib/env.sh"
 
 log_info "[12] Running post checks..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "$ROOT_DIR/.env"
 
 RUSER=${ROUTER_ADMIN_USER}
 ROUTER_IP=${ROUTER_IP:-}

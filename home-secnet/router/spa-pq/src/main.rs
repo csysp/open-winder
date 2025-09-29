@@ -117,10 +117,16 @@ enum Command {
         /// Acceptable time skew for knocks (seconds)
         #[arg(long, default_value_t = 30)]
         window_secs: i64,
-        /// nft family/table (e.g., inet)
+        /// nftables family (e.g., inet)
         #[arg(long, default_value = "inet")]
+        nft_family: String,
+        /// nftables table (e.g., fw4 on OpenWRT)
+        #[arg(long, default_value = "fw4")]
         nft_table: String,
-        /// nft chain (e.g., wg_spa_allow)
+        /// nftables set name to receive allowed source IPs
+        #[arg(long, default_value = "wg_spa_allow")]
+        nft_set: String,
+        /// Deprecated: nft chain (old model added elements to <chain>_set)
         #[arg(long, default_value = "wg_spa_allow")]
         nft_chain: String,
     },
@@ -178,41 +184,35 @@ fn gen_keys(priv_out: PathBuf, pub_out: PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn ensure_nft_chain(table: &str, chain: &str) -> Result<()> {
-    // Fail-fast verification only. Systemd ExecStartPre must provision these.
-    let set_name = format!("{}{}_set", "", chain);
+fn ensure_nft_set(family: &str, table: &str, set_name: &str) -> Result<()> {
+    // Fail-fast verification that the fw4 table and target set exist.
     let ok_table = std::process::Command::new("nft")
-        .args(["list", "table", table, "filter"]) // e.g., inet filter
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
-    let ok_chain = std::process::Command::new("nft")
-        .args(["list", "chain", table, "filter", chain])
+        .args(["list", "table", family, table])
         .status()
         .map(|s| s.success())
         .unwrap_or(false);
     let ok_set = std::process::Command::new("nft")
-        .args(["list", "set", table, "filter", &set_name])
+        .args(["list", "set", family, table, set_name])
         .status()
         .map(|s| s.success())
         .unwrap_or(false);
-    if !(ok_table && ok_chain && ok_set) {
+    if !(ok_table && ok_set) {
         return Err(SpaError::NftMissing.into());
     }
     Ok(())
 }
 
 fn add_allow_set_entry(
+    family: &str,
     table: &str,
-    chain: &str,
+    set_name: &str,
     client_ip: Ipv4Addr,
     open_secs: u64,
 ) -> Result<()> {
     // add element to set with timeout
-    let set_name = format!("{}{}_set", "", chain);
     let elem = format!("{{ {} timeout {}s }}", client_ip, open_secs);
     let status = std::process::Command::new("nft")
-        .args(["add", "element", table, "filter", &set_name, &elem])
+        .args(["add", "element", family, table, set_name, &elem])
         .status()
         .context("nft add element")?;
     if !status.success() {
@@ -231,8 +231,9 @@ fn run_daemon(
     psk_file: PathBuf,
     open_secs: u64,
     window_secs: i64,
+    nft_family: String,
     nft_table: String,
-    nft_chain: String,
+    nft_set: String,
 ) -> Result<()> {
     let sock = UdpSocket::bind(&listen).with_context(|| format!("bind {}", listen))?;
     sock.set_read_timeout(Some(Duration::from_millis(500)))?;
@@ -247,7 +248,7 @@ fn run_daemon(
     let sk = <kem::SecretKey as SkTrait>::from_bytes(&kem_priv_bytes)
         .map_err(|_| anyhow!("invalid KEM private key"))?;
 
-    ensure_nft_chain(&nft_table, &nft_chain)?;
+    ensure_nft_set(&nft_family, &nft_table, &nft_set)?;
 
     // Maintain a replay cache of (src_ip, nonce, ts) with TTL=window_secs
     let mut replay_cache = ReplayCache::new(Duration::from_secs(window_secs as u64), 4096);
@@ -296,8 +297,9 @@ fn run_daemon(
                         &psk,
                         window_secs,
                         open_secs,
+                        &nft_family,
                         &nft_table,
-                        &nft_chain,
+                        &nft_set,
                         wg_port,
                         &mut replay_cache,
                     );
@@ -426,18 +428,28 @@ fn main() -> Result<()> {
             psk_file,
             open_secs,
             window_secs,
+            nft_family,
             nft_table,
+            nft_set,
             nft_chain,
-        } => run_daemon(
-            listen,
-            wg_port,
-            kem_priv,
-            psk_file,
-            open_secs,
-            window_secs,
-            nft_table,
-            nft_chain,
-        ),
+        } => {
+            let effective_set = if nft_set.is_empty() {
+                format!("{}{}_set", "", nft_chain)
+            } else {
+                nft_set
+            };
+            run_daemon(
+                listen,
+                wg_port,
+                kem_priv,
+                psk_file,
+                open_secs,
+                window_secs,
+                nft_family,
+                nft_table,
+                effective_set,
+            )
+        },
     }
 }
 

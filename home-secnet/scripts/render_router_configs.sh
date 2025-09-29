@@ -21,9 +21,9 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
 fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-# Load environment if present to honor tests and overrides
+# Load environment via common helper (loads .env.example then .env)
 # shellcheck disable=SC1090
-[[ -f "$ROOT_DIR/.env" ]] && source "$ROOT_DIR/.env"
+[[ -f "${SCRIPT_DIR}/lib/env.sh" ]] && source "${SCRIPT_DIR}/lib/env.sh"
 # Ensure render roots exist as early as possible (CI-safe)
 mkdir -p "$ROOT_DIR/render" \
 "$ROOT_DIR/render/openwrt/etc/config" \

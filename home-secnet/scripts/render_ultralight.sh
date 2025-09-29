@@ -38,9 +38,10 @@ fi
 # Derive interface names from .env if present
 ROUTER_WAN_IF_DEFAULT="wan0"
 ROUTER_LAN_IF_DEFAULT="lan0"
-if [[ -f "$(dirname "$0")/../.env" ]]; then
+if [[ -f "${SCRIPT_DIR}/lib/env.sh" ]]; then
   # shellcheck disable=SC1090
-  source "$(dirname "$0")/../.env"
+  source "${SCRIPT_DIR}/lib/env.sh"
+  set -a; load_env; set +a
 fi
 WAN_IF_NAME="${ROUTER_WAN_IF:-$ROUTER_WAN_IF_DEFAULT}"
 LAN_IF_NAME="${ROUTER_LAN_IF:-$ROUTER_LAN_IF_DEFAULT}"
@@ -232,4 +233,3 @@ EOF
 chmod +x "$OUT_ROOT/usr/local/sbin/ul_health.sh"
 
 echo "[render] Ultralight render complete under $OUT_ROOT/."
-

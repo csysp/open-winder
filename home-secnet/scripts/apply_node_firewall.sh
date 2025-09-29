@@ -18,19 +18,16 @@ USAGE
 if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
   usage; exit 0
 fi
-# shellcheck source=scripts/lib/log.sh
-# shellcheck source=home-secnet/scripts/lib/log.sh
-LIB_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/lib" && pwd)/log.sh"
-if [[ -f "$LIB_PATH" ]]; then
-  # shellcheck disable=SC1090
-  source "$LIB_PATH"
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1090
+[[ -f "${SCRIPT_DIR}/lib/log.sh" ]] && source "${SCRIPT_DIR}/lib/log.sh"
 
 log_info "[10] Locking down Proxmox firewall..."
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-set -a
-source "$ROOT_DIR/.env"
-set +a
+# Load env and export for envsubst compatibility
+# shellcheck disable=SC1090
+source "${SCRIPT_DIR}/lib/env.sh"
+set -a; load_env; set +a
 
 if [[ $EUID -ne 0 ]]; then
   echo "[10] Run as root on the Proxmox host." >&2

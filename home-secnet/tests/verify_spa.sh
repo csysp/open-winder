@@ -29,3 +29,4 @@ if [[ ! -f "$ROOT_DIR/render/spa/pq/psk.bin" ]]; then
   echo "WARNING: PSK not rendered locally; will be generated/applied on router"
 fi
 echo "PQ-KEM SPA config present. Use spa-pq-client to knock."
+

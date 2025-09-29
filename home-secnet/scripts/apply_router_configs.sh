@@ -182,6 +182,9 @@ if [[ "${SPA_ENABLE}" == "true" ]]; then
     fi
     # Fetch prebuilt, trusted SPA binary from GitHub Releases
     SPA_VER="${SPA_PQ_VERSION:-latest}"
+    if [[ "$SPA_VER" == "latest" ]]; then
+      echo "[09] WARNING: SPA_PQ_VERSION not set; using 'latest' (non-reproducible). Set a tagged version for reproducibility." >&2
+    fi
     ARCH_BIN="home-secnet-spa-pq"
     DL_URL="https://github.com/csysp/winder/releases/download/${SPA_VER}/${ARCH_BIN}"
     DL_SHA="${DL_URL}.sha256"

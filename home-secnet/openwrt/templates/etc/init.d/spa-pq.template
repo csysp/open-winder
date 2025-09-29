@@ -13,15 +13,16 @@ LOG_OPTS=""
 start_service() {
     [ -x "$BIN" ] || return 1
     procd_open_instance
-    procd_set_param command "$BIN" \
+    procd_set_param command "$BIN" run \
         --listen 0.0.0.0:${SPA_PQ_PORT} \
-        --nft-table inet \
-        --nft-chain wg_spa_allow \
+        --wg-port ${WG_PORT} \
+        --kem-priv ${CONFIG_DIR}/kem_priv.bin \
+        --psk-file ${SPA_PQ_PSK_FILE:-/etc/spa/psk.bin} \
         --open-secs ${SPA_PQ_OPEN_SECS} \
         --window-secs ${SPA_PQ_WINDOW_SECS} \
-        --kem ${SPA_PQ_KEM:-kyber768} \
-        --psk-file ${SPA_PQ_PSK_FILE:-/etc/spa/psk.bin} \
-        --keys-dir ${CONFIG_DIR}
+        --nft-family inet \
+        --nft-table fw4 \
+        --nft-set wg_spa_allow
     procd_set_param respawn 2000 5 5
     procd_set_param stdout 1
     procd_set_param stderr 1
@@ -31,4 +32,3 @@ start_service() {
 stop_service() {
     :
 }
-

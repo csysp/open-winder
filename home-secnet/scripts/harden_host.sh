@@ -27,8 +27,11 @@ if [[ -f "$LIB_PATH" ]]; then
 fi
 
 log_info "[03] Hardening Proxmox host..."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1090
+source "${SCRIPT_DIR}/lib/env.sh"
+set -a; load_env; set +a
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "$ROOT_DIR/.env"
 
 if [[ $EUID -ne 0 ]]; then
   echo "[03] Run as root on the Proxmox host." >&2
