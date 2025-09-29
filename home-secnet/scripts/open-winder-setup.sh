@@ -47,7 +47,7 @@ log_info "[setup] Building image (pinned ImageBuilder)..."
 make -C "${ROOT_DIR}" openwrt-build
 
 if [[ "$FLASH" -eq 1 ]]; then
-  img=$(ls -1t "${ROOT_DIR}/render/images"/* 2>/dev/null | head -n1 || true)
+  img=$(find "${ROOT_DIR}/render/images" -maxdepth 1 -type f -print0 2>/dev/null | xargs -0 ls -1t 2>/dev/null | head -n1 || true)
   if [[ -z "$img" ]]; then
     echo "[setup] No built images found under render/images/." >&2
     exit 1

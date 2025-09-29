@@ -31,8 +31,8 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # Determine Router VM IP via QEMU agent (expects DHCP on WAN or console access)
 ROUTER_IP="${ROUTER_IP:-}" # allow override
 if [[ -z "${ROUTER_IP}" ]]; then
-  if qm agent $ROUTER_VM_ID network-get-interfaces >/dev/null 2>&1; then
-    ROUTER_IP=$(qm agent $ROUTER_VM_ID network-get-interfaces | awk -F'"' '/"ip-address":/ {print $4}' | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -n1 || echo "")
+  if qm agent "$ROUTER_VM_ID" network-get-interfaces >/dev/null 2>&1; then
+    ROUTER_IP=$(qm agent "$ROUTER_VM_ID" network-get-interfaces | awk -F'"' '/"ip-address":/ {print $4}' | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -n1 || echo "")
     if [[ -z "${ROUTER_IP:-}" ]]; then log_warn "[09] Could not determine Router IP via qemu-guest-agent"; fi
   fi
 fi
@@ -45,20 +45,20 @@ echo "[09] Using Router VM IP: $ROUTER_IP"
 
 RUSER=${ROUTER_ADMIN_USER}
 
-ssh -o StrictHostKeyChecking=accept-new ${RUSER}@${ROUTER_IP} "sudo mkdir -p /opt/router && sudo chown \$(id -un):\$(id -gn) /opt/router"
-rsync -av --delete "$ROOT_DIR/render/router/configs/" ${RUSER}@${ROUTER_IP}:/opt/router/
-rsync -av "$ROOT_DIR/router/systemd/" ${RUSER}@${ROUTER_IP}:/opt/router/systemd/
-rsync -av "$ROOT_DIR/router/hardening/" ${RUSER}@${ROUTER_IP}:/opt/router/hardening/
-rsync -av "$ROOT_DIR/router/cloudinit/" ${RUSER}@${ROUTER_IP}:/opt/router/cloudinit/
+ssh -o StrictHostKeyChecking=accept-new "${RUSER}"@"${ROUTER_IP}" "sudo mkdir -p /opt/router && sudo chown \$(id -un):\$(id -gn) /opt/router"
+rsync -av --delete "$ROOT_DIR/render/router/configs/" "${RUSER}"@"${ROUTER_IP}":/opt/router/
+rsync -av "$ROOT_DIR/router/systemd/" "${RUSER}"@"${ROUTER_IP}":/opt/router/systemd/
+rsync -av "$ROOT_DIR/router/hardening/" "${RUSER}"@"${ROUTER_IP}":/opt/router/hardening/
+rsync -av "$ROOT_DIR/router/cloudinit/" "${RUSER}"@"${ROUTER_IP}":/opt/router/cloudinit/
 if [[ -d "$ROOT_DIR/render/spa/pq" ]]; then
-  rsync -av "$ROOT_DIR/render/spa/pq/" ${RUSER}@${ROUTER_IP}:/opt/router/spa-pq/
+  rsync -av "$ROOT_DIR/render/spa/pq/" "${RUSER}"@"${ROUTER_IP}":/opt/router/spa-pq/
 fi
   # no longer building on router; spa-pq-src sync removed
 if [[ -d "$ROOT_DIR/render/router/systemd" ]]; then
-  rsync -av "$ROOT_DIR/render/router/systemd/" ${RUSER}@${ROUTER_IP}:/opt/router/systemd/rendered/
+  rsync -av "$ROOT_DIR/render/router/systemd/" "${RUSER}"@"${ROUTER_IP}":/opt/router/systemd/rendered/
 fi
 
-ssh ${RUSER}@${ROUTER_IP} "USE_VLANS='${USE_VLANS}' ROUTER_LAN_IF='${ROUTER_LAN_IF}' VLAN_TRUSTED='${VLAN_TRUSTED}' VLAN_IOT='${VLAN_IOT}' VLAN_GUEST='${VLAN_GUEST}' VLAN_LAB='${VLAN_LAB}' DISABLE_USB_STORAGE='${DISABLE_USB_STORAGE}' HARDEN_AUDITD='${HARDEN_AUDITD}' INSTALL_AIDE='${INSTALL_AIDE}' FAIL2BAN_ENABLE='${FAIL2BAN_ENABLE}' ADGUARD_VERSION='${ADGUARD_VERSION}' HYSTERIA_VERSION='latest' RSYSLOG_FORWARD_ENABLE='${RSYSLOG_FORWARD_ENABLE:-false}' RSYSLOG_REMOTE='${RSYSLOG_REMOTE:-}' SPA_PQ_VERSION='${SPA_PQ_VERSION:-latest}' SPA_PQ_SIG_URL='${SPA_PQ_SIG_URL:-}' bash -s" <<'EOSSH'
+ssh "${RUSER}"@"${ROUTER_IP}" "USE_VLANS='${USE_VLANS}' ROUTER_LAN_IF='${ROUTER_LAN_IF}' VLAN_TRUSTED='${VLAN_TRUSTED}' VLAN_IOT='${VLAN_IOT}' VLAN_GUEST='${VLAN_GUEST}' VLAN_LAB='${VLAN_LAB}' DISABLE_USB_STORAGE='${DISABLE_USB_STORAGE}' HARDEN_AUDITD='${HARDEN_AUDITD}' INSTALL_AIDE='${INSTALL_AIDE}' FAIL2BAN_ENABLE='${FAIL2BAN_ENABLE}' ADGUARD_VERSION='${ADGUARD_VERSION}' HYSTERIA_VERSION='latest' RSYSLOG_FORWARD_ENABLE='${RSYSLOG_FORWARD_ENABLE:-false}' RSYSLOG_REMOTE='${RSYSLOG_REMOTE:-}' SPA_PQ_VERSION='${SPA_PQ_VERSION:-latest}' SPA_PQ_SIG_URL='${SPA_PQ_SIG_URL:-}' bash -s" <<'EOSSH'
 set -euo pipefail
 sudo mkdir -p /etc/netplan /etc/wireguard
 # Backups with timestamp

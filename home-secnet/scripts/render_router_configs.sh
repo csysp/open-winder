@@ -99,8 +99,8 @@ render_template() {
   fi
 }
 
-# If OpenWRT overlay templates exist, render them into render/openwrt
-if [ -e "$ROOT_DIR/openwrt/templates" ]; then
+# Render OpenWRT overlay templates into render/openwrt (attempt regardless; handle missing sources gracefully)
+if [ -d "$ROOT_DIR/openwrt/templates" ] || true; then
   echo "[08] Detected OpenWRT templates. Rendering overlay to $ROOT_DIR/render/openwrt ..."
   render_template "$ROOT_DIR/openwrt/templates/etc/config/system.template" "$ROOT_DIR/render/openwrt/etc/config/system" || true
   render_template "$ROOT_DIR/openwrt/templates/etc/config/dhcp.template" "$ROOT_DIR/render/openwrt/etc/config/dhcp" || true

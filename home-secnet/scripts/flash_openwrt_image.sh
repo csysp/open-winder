@@ -31,7 +31,7 @@ done
 [[ -b "$DEVICE" ]] || { echo "Target device not found: $DEVICE" >&2; exit 1; }
 
 if [[ -z "$IMAGE" ]]; then
-  IMAGE="$(ls -1t "$IMAGES_DIR"/*.img* 2>/dev/null | head -n1 || true)"
+  IMAGE="$(find "$IMAGES_DIR" -maxdepth 1 -type f -name "*.img*" -print0 2>/dev/null | xargs -0 ls -1t 2>/dev/null | head -n1 || true)"
 fi
 [[ -f "$IMAGE" ]] || { echo "Image not found: $IMAGE" >&2; exit 1; }
 
@@ -49,4 +49,3 @@ else
 fi
 sync
 echo "Done. You can now boot from $DEVICE."
-
