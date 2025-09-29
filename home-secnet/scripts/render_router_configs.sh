@@ -21,6 +21,9 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
 fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# Load environment if present to honor tests and overrides
+# shellcheck disable=SC1090
+[[ -f "$ROOT_DIR/.env" ]] && source "$ROOT_DIR/.env"
 # Ensure render roots exist as early as possible (CI-safe)
 mkdir -p "$ROOT_DIR/render" \
 "$ROOT_DIR/render/openwrt/etc/config" \
@@ -99,6 +102,9 @@ if [ -e "$ROOT_DIR/openwrt/templates" ]; then
   render_template "$ROOT_DIR/openwrt/templates/etc/adguardhome.yaml.template" "$ROOT_DIR/render/openwrt/etc/adguardhome.yaml" || true
   render_template "$ROOT_DIR/openwrt/templates/etc/unbound/unbound.conf.template" "$ROOT_DIR/render/openwrt/etc/unbound/unbound.conf" || true
   render_template "$ROOT_DIR/openwrt/templates/etc/nftables.d/99-wg-spa.nft.template" "$ROOT_DIR/render/openwrt/etc/nftables.d/99-wg-spa.nft" || true
+  # SPA-PQ init script
+  render_template "$ROOT_DIR/openwrt/templates/etc/init.d/spa-pq.template" "$ROOT_DIR/render/openwrt/etc/init.d/spa-pq" || true
+  chmod 0755 "$ROOT_DIR/render/openwrt/etc/init.d/spa-pq" || true
   # Hysteria2 wrapper (optional)
   if [[ "${WRAP_MODE:-none}" == "hysteria2" ]]; then
     render_template "$ROOT_DIR/openwrt/templates/etc/hysteria/config.yaml.template" "$ROOT_DIR/render/openwrt/etc/hysteria/config.yaml" || true
@@ -148,6 +154,8 @@ if [ -e "$ROOT_DIR/openwrt/templates" ]; then
 fi
 
 # OpenWRT-only branch: stop here to avoid legacy VM/Ubuntu render paths
+mkdir -p "$ROOT_DIR/render/openwrt/overlay"
+cp -a "$ROOT_DIR/render/openwrt/etc" "$ROOT_DIR/render/openwrt/overlay/" 2>/dev/null || true
 exit 0
 # Avoid sourcing .env directly elsewhere; lib/env.sh already loaded
 # Write env-vars for templates (to render/, not router/)
