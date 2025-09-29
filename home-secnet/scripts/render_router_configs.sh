@@ -101,6 +101,9 @@ mask_from_prefix() {
 # Map env vars for OpenWRT templates if needed
 export LAN_IF="${LAN_IF:-${ROUTER_LAN_IF:-br-lan}}"
 export WAN_IF="${WAN_IF:-${ROUTER_WAN_IF:-wan}}"
+# Ensure related variables are exported for template substitution (safe if unset)
+export LAN_ADDR LAN_NETMASK WG_PORT WG_SERVER_IP WG_SERVER_PRIVKEY
+log_info "[08] Using LAN_IF=${LAN_IF} WAN_IF=${WAN_IF}"
 
 # Render OpenWRT overlay templates (envsubst/perl)
 render_template() {
