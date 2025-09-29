@@ -20,7 +20,8 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
   usage; exit 0
 fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# Derive project root as parent of scripts/ reliably
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 # Load environment via common helper (loads .env.example then .env)
 # shellcheck disable=SC1090
 [[ -f "${SCRIPT_DIR}/lib/env.sh" ]] && source "${SCRIPT_DIR}/lib/env.sh"
@@ -99,8 +100,8 @@ render_template() {
   fi
 }
 
-# Render OpenWRT overlay templates into render/openwrt (attempt regardless; handle missing sources gracefully)
-if [ -d "$ROOT_DIR/openwrt/templates" ] || true; then
+# Render OpenWRT overlay templates into render/openwrt when templates exist
+if [ -d "$ROOT_DIR/openwrt/templates" ]; then
   echo "[08] Detected OpenWRT templates. Rendering overlay to $ROOT_DIR/render/openwrt ..."
   render_template "$ROOT_DIR/openwrt/templates/etc/config/system.template" "$ROOT_DIR/render/openwrt/etc/config/system" || true
   render_template "$ROOT_DIR/openwrt/templates/etc/config/dhcp.template" "$ROOT_DIR/render/openwrt/etc/config/dhcp" || true
