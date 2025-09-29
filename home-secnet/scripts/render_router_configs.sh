@@ -20,8 +20,12 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
   usage; exit 0
 fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Derive project root as parent of scripts/ reliably (absolute path)
-ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# Prefer external ROOT_DIR if provided and looks valid; otherwise derive from script location
+if [[ -n "${ROOT_DIR:-}" && -d "${ROOT_DIR}/openwrt/templates" ]]; then
+  : # keep external ROOT_DIR
+else
+  ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+fi
 # Load environment via common helper (loads .env.example then .env)
 # shellcheck disable=SC1090
 [[ -f "${SCRIPT_DIR}/lib/env.sh" ]] && source "${SCRIPT_DIR}/lib/env.sh"
