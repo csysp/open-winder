@@ -20,8 +20,8 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
   usage; exit 0
 fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Derive project root as parent of scripts/ reliably
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+# Derive project root as parent of scripts/ reliably (absolute path)
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # Load environment via common helper (loads .env.example then .env)
 # shellcheck disable=SC1090
 [[ -f "${SCRIPT_DIR}/lib/env.sh" ]] && source "${SCRIPT_DIR}/lib/env.sh"
@@ -50,6 +50,12 @@ mkdir -p "$ROOT_DIR/render/openwrt/etc/config" \
 "$ROOT_DIR/render/openwrt/etc/hysteria" || true
 
 log_info "[08] Rendering router configs from .env and generating keys..."
+log_info "[08] ROOT_DIR=${ROOT_DIR}"
+if [ -d "$ROOT_DIR/openwrt/templates" ]; then
+  log_info "[08] Templates dir present: $ROOT_DIR/openwrt/templates"
+else
+  log_warn "[08] Templates dir missing: $ROOT_DIR/openwrt/templates"
+fi
 
 mkdir -p "$ROOT_DIR/render/router/configs" "$ROOT_DIR/clients"
 
