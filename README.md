@@ -6,9 +6,9 @@ This project is early in development. Expect rapid iteration and general slop co
 
 Quick Start
 - One-click (safe, no flash):
-  - `bash home-secnet/scripts/oneclick.sh --yes`
+  - `bash home-secnet/scripts/open-winder-setup.sh --yes`
 - One-click + flash (destructive):
-  - `sudo bash home-secnet/scripts/oneclick.sh --yes --flash device=/dev/sdX`
+  - `sudo bash home-secnet/scripts/open-winder-setup.sh --yes --flash device=/dev/sdX`
 - Output images: `home-secnet/render/images/`
 - First boot: connect to LAN; follow your device's OpenWRT install notes.
 

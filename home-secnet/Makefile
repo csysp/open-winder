@@ -38,7 +38,7 @@ hypervisor-setup:
 	@"$(SCRIPTS)/providers/proxmox/configure_bridges.sh"
 
 oneclick:
-	@"$(SCRIPTS)/oneclick.sh" --yes
+	@"$(SCRIPTS)/open-winder-setup.sh" --yes
 
 oneclick-flash:
-	@"$(SCRIPTS)/oneclick.sh" --yes --flash device=$${device}
+	@"$(SCRIPTS)/open-winder-setup.sh" --yes --flash device=$${device}

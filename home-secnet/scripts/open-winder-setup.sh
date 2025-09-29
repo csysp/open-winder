@@ -18,7 +18,7 @@ FLASH_ARGS=()
 
 usage(){
   cat <<USAGE
-Usage: oneclick.sh [--yes] [--flash device=/dev/sdX]
+Usage: open-winder-setup.sh [--yes] [--flash device=/dev/sdX]
   --yes                  Non-interactive where safe
   --flash device=PATH    Flash newest built image to device (destructive)
 USAGE
@@ -33,23 +33,23 @@ for arg in "$@"; do
   esac
 done
 
-log_info "[oneclick] Starting wizard..."
+log_info "[setup] Starting wizard..."
 if [[ "$YES" -eq 1 ]]; then
   "${SCRIPT_DIR}/install.sh" --yes
 else
   "${SCRIPT_DIR}/install.sh"
 fi
 
-log_info "[oneclick] Rendering overlay..."
+log_info "[setup] Rendering overlay..."
 make -C "${ROOT_DIR}" openwrt-render
 
-log_info "[oneclick] Building image (pinned ImageBuilder)..."
+log_info "[setup] Building image (pinned ImageBuilder)..."
 make -C "${ROOT_DIR}" openwrt-build
 
 if [[ "$FLASH" -eq 1 ]]; then
   img=$(ls -1t "${ROOT_DIR}/render/images"/* 2>/dev/null | head -n1 || true)
   if [[ -z "$img" ]]; then
-    echo "[oneclick] No built images found under render/images/." >&2
+    echo "[setup] No built images found under render/images/." >&2
     exit 1
   fi
   # Expect arg like: --flash device=/dev/sdX
@@ -60,9 +60,8 @@ if [[ "$FLASH" -eq 1 ]]; then
   if [[ -z "$dev" ]]; then
     echo "[oneclick] --flash requires device=/dev/sdX" >&2; exit 1
   fi
-  log_info "[oneclick] Flashing $img to $dev (destructive)..."
+  log_info "[setup] Flashing $img to $dev (destructive)..."
   make -C "${ROOT_DIR}" openwrt-flash device="$dev" image="$img"
 fi
 
-log_info "[oneclick] Done. Images: ${ROOT_DIR}/render/images/"
-
+log_info "[setup] Done. Images: ${ROOT_DIR}/render/images/"

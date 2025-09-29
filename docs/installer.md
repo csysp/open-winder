@@ -5,9 +5,9 @@ Design
 - Pinned, checksummed artifacts when network fetch is required; otherwise local.
 
 Local (repo-cloned) usage
-- Run the local installer wrapper, which invokes the wizard:
-  - bash home-secnet/scripts/install.sh
-  - bash home-secnet/scripts/install.sh --yes   # non-interactive where safe
+- Primary path is the orchestrator, which runs the wizard, renders, builds, and can flash:
+  - bash home-secnet/scripts/open-winder-setup.sh --yes
+  - sudo bash home-secnet/scripts/open-winder-setup.sh --yes --flash device=/dev/sdX
 
 Intended tagged one-liner (for releases)
 - curl -fsSL https://example.com/winder/releases/download/vX.Y.Z/install.sh | bash
@@ -26,4 +26,3 @@ Next steps after wizard
 Security
 - Never fetch “latest”. Installers require version-pinned URLs + SHA256.
 - `.env` is never committed; `.env.example` documents variables.
-
