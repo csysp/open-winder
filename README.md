@@ -34,6 +34,10 @@ Make Targets
 - OpenWRT flow: `openwrt-render`, `openwrt-build`, `openwrt-flash`, `checks-openwrt`
 - Checks: `checks-openwrt` runs lint + tests.
 
+CI
+- Runs ShellCheck and repo checks on pushes and PRs.
+- Secrets scanning uses Gitleaks and TruffleHog OSS on `main`.
+
 Security & Options (Short)
 - DNS: AdGuard Home → Unbound (validating DNSSEC). UI binds `127.0.0.1:3000` by default; use SSH tunnel.
 - WireGuard & SPA: `wg0` is configured; SPA gates UDP `${WG_PORT}` via an nftables allow‑set.
