@@ -213,7 +213,7 @@ if [[ -z "$ROUTER_IP" ]]; then
 fi
 
 echo "[11] Installing packages and enabling timers on Router VM ($ROUTER_IP)..."
-ssh -o StrictHostKeyChecking=accept-new ${ROUTER_ADMIN_USER}@${ROUTER_IP} bash -s <<'EOSSH'
+ssh -o StrictHostKeyChecking=accept-new "${ROUTER_ADMIN_USER}"@"${ROUTER_IP}" bash -s <<'EOSSH'
 set -euo pipefail
 sudo apt-get update -y
 sudo apt-get install -y unattended-upgrades apt-listchanges lynis rkhunter chkrootkit clamav-daemon clamav-freshclam
